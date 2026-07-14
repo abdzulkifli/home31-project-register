@@ -1,0 +1,3 @@
+# Add or merge this function configuration into supabase/config.toml.
+[functions.admin-create-user]
+verify_jwt = true

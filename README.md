@@ -1,4 +1,4 @@
-# HOME31 Role-Based Initiative Register — Version 3
+# HOME31 Enterprise Initiative Register V4 — Version 3
 
 This GitHub Pages + Supabase prototype provides two different dashboards.
 
@@ -111,3 +111,93 @@ Then enable **Settings > Pages > Deploy from a branch > main > root**.
 ## Important limitation
 
 The super-admin dashboard manages application profiles and project records. It does not directly create or delete Supabase Auth accounts because privileged Auth administration requires a trusted server environment and must never use a service-role key in GitHub Pages.
+
+
+## Authentication redirect and expired-link fix
+
+The application passes its current hosting folder to Supabase as
+`emailRedirectTo`. This is important for GitHub Pages project sites because the
+repository path must not be lost.
+
+In Supabase, open:
+
+`Authentication > URL Configuration`
+
+Set **Site URL** to the exact address where `index.html` opens.
+
+Examples:
+
+- Root user site:
+  `https://abdzulkifli.github.io/`
+- Project site:
+  `https://abdzulkifli.github.io/YOUR-REPOSITORY/`
+
+Under **Redirect URLs**, add the same exact production URL. For local testing,
+also add:
+
+`http://localhost:8000/**`
+
+Confirmation links are single-use. After requesting another email, use only the
+newest link. The application now includes a **Resend confirmation email** button.
+
+If you changed the Supabase confirmation email template, the confirmation button
+should continue to use:
+
+`{{ .ConfirmationURL }}`
+
+Do not hardcode `https://abdzulkifli.github.io/` inside the template unless the
+application is genuinely hosted at that root URL.
+
+
+## Super admin can add users
+
+Version 3.2 adds an **Add a User** panel to the super-admin dashboard.
+
+Available methods:
+
+- **Send invitation email** — recommended. The user receives a Supabase invite
+  and completes account setup.
+- **Create active account** — the admin assigns a temporary password and the
+  account is created with its email already confirmed.
+
+Every account created through this panel starts as `normal_user`. Use the
+existing **User Directory & Roles** panel to promote a trusted administrator.
+
+This feature requires the protected Supabase Edge Function included at:
+
+`supabase/functions/admin-create-user/index.ts`
+
+Deploy it before testing the Add User form. Follow:
+
+`DEPLOY-ADMIN-USER-FUNCTION.md`
+
+Do not place a Supabase service-role or secret key in `app.js`, GitHub Pages, or
+the GitHub repository.
+
+
+## Version 4 enterprise administration
+
+The super admin can now:
+
+- Open the same comprehensive initiative-entry workflow used by normal users.
+- Submit an initiative under the super-admin account or on behalf of a selected normal user.
+- Create an immediately active normal-user account without sending a confirmation email.
+- Generate and copy a temporary password for secure manual distribution.
+- View interactive Chart.js analytics for status, strategic pillars, risk and departmental readiness.
+- Click chart segments or bars to filter the underlying initiative portfolio.
+- Review low-readiness and overdue-project management insights.
+
+### Required database update
+
+Run the latest `supabase-setup.sql` again. It updates the project insert policy so
+a super admin may create an initiative on behalf of another user. Existing data
+is retained.
+
+### Direct active user creation
+
+Deploy the included `admin-create-user` Edge Function. The frontend never receives
+the service-role or secret key. The Edge Function verifies that the caller is a
+super admin, creates the Auth account with `email_confirm: true`, and creates the
+application profile as `normal_user`.
+
+The temporary password must be distributed through an approved secure channel.

@@ -1,8 +1,13 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://jmwduiivsxvtelpjncgr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5Fvivqq5KnxobZg1kGRxCg_cD9xF9CR";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
+
+// Resolves automatically to the folder where this page is currently hosted.
+// This preserves a GitHub Pages repository path instead of redirecting only
+// to https://USERNAME.github.io/.
+const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
   !SUPABASE_URL.includes("YOUR-PROJECT") &&
@@ -78,7 +83,13 @@ const elements = {
   journeyPercent: $("#journey-percent"),
   adminProjectList: $("#admin-project-list"),
   adminProjectMessage: $("#admin-project-message"),
-  adminUserList: $("#admin-user-list")
+  adminUserList: $("#admin-user-list"),
+  adminCreateUserForm: $("#admin-create-user-form"),
+  adminCreateUserButton: $("#admin-create-user-button"),
+  adminNewUserPasswordField: $("#admin-new-user-password-field"),
+  adminNewUserPassword: $("#admin-new-user-password"),
+  adminRecordOwnerField: $("#admin-record-owner-field"),
+  adminRecordOwner: $("#admin-record-owner")
 };
 
 let currentUser = null;
@@ -87,6 +98,8 @@ let currentStep = 1;
 let projects = [];
 let adminProjects = [];
 let adminProfiles = [];
+let adminCharts = {};
+let lastCreatedCredentials = null;
 
 if (!configured) elements.warning.classList.remove("hidden");
 
@@ -94,8 +107,10 @@ initialise();
 
 async function initialise() {
   registerEvents();
+  handleAuthRedirectFeedback();
   updateHrVisibility();
   calculateReadiness();
+  updateAdminCreateUserMethod();
 
   if (!configured) return;
 
@@ -109,6 +124,7 @@ async function initialise() {
 function registerEvents() {
   elements.loginForm.addEventListener("submit", signIn);
   elements.signupForm.addEventListener("submit", signUp);
+  $("#resend-confirmation-button").addEventListener("click", resendConfirmation);
   elements.logoutButton.addEventListener("click", signOut);
   elements.menuButton.addEventListener("click", () => elements.nav.classList.toggle("open"));
 
@@ -140,6 +156,14 @@ function registerEvents() {
   });
   $("#admin-refresh-button").addEventListener("click", loadAdminData);
   $("#admin-export-button").addEventListener("click", exportAdminProjectsCsv);
+  elements.adminCreateUserForm.addEventListener("submit", adminCreateUser);
+  $("#admin-new-user-method").addEventListener("change", updateAdminCreateUserMethod);
+  $("#admin-generate-password").addEventListener("click", generateTemporaryPassword);
+  $("#admin-copy-credentials").addEventListener("click", copyLastCreatedCredentials);
+  $("#admin-key-in-initiative").addEventListener("click", startNewInitiative);
+  $("#admin-jump-users").addEventListener("click", () => $("#admin-create-user-form").scrollIntoView({ behavior: "smooth", block: "center" }));
+  $("#admin-jump-analytics").addEventListener("click", () => $("#admin-analytics").scrollIntoView({ behavior: "smooth", block: "start" }));
+  $("#admin-clear-chart-filters").addEventListener("click", clearAdminChartFilters);
   ["#admin-search", "#admin-status-filter", "#admin-pillar-filter", "#admin-risk-filter"]
     .forEach(selector => $(selector).addEventListener("input", renderAdminProjects));
 
@@ -191,7 +215,10 @@ async function signUp(event) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, department } }
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL,
+      data: { full_name: fullName, department }
+    }
   });
   setBusy(elements.signupForm, false);
 
@@ -201,6 +228,68 @@ async function signUp(event) {
   showToast(data.session
     ? "Account created and signed in."
     : "Account created. Check your email to confirm it.");
+}
+
+async function resendConfirmation() {
+  if (!configured) return showToast("Configure Supabase in app.js first.", true);
+
+  const email = $("#signup-email").value.trim() || $("#login-email").value.trim();
+
+  if (!email) {
+    return showToast(
+      "Enter the registered email address in the sign-up or sign-in email field first.",
+      true
+    );
+  }
+
+  const button = $("#resend-confirmation-button");
+  button.disabled = true;
+  button.textContent = "Sending...";
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL
+    }
+  });
+
+  button.disabled = false;
+  button.textContent = "Resend confirmation email";
+
+  if (error) return showToast(error.message, true);
+
+  showToast(
+    `A fresh confirmation email was requested for ${email}. Use only the newest email link.`
+  );
+}
+
+function handleAuthRedirectFeedback() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return;
+
+  const params = new URLSearchParams(hash);
+  const errorCode = params.get("error_code");
+  const errorDescription = params.get("error_description");
+
+  if (!errorCode && !errorDescription) return;
+
+  let message = errorDescription || "Authentication could not be completed.";
+
+  if (errorCode === "otp_expired") {
+    message =
+      "This confirmation link has expired or has already been used. " +
+      "Enter the same email address and select “Resend confirmation email”, " +
+      "then use only the newest link.";
+  }
+
+  window.history.replaceState(
+    {},
+    document.title,
+    `${window.location.pathname}${window.location.search}`
+  );
+
+  window.setTimeout(() => showToast(message, true), 100);
 }
 
 async function signOut() {
@@ -251,17 +340,20 @@ async function renderSession() {
   const isAdmin = profile.role === "super_admin";
 
   elements.roleBadge.textContent = isAdmin ? "SUPER ADMIN" : "NORMAL USER";
-  elements.userDashboard.classList.toggle("hidden", isAdmin);
+  elements.userDashboard.classList.remove("hidden");
   elements.adminDashboard.classList.toggle("hidden", !isAdmin);
   elements.adminDashboardButton.classList.toggle("hidden", !isAdmin);
-  $("#start-button").classList.toggle("hidden", isAdmin);
-  $("#demo-button").classList.toggle("hidden", isAdmin);
-  $("#nav-new-initiative").classList.toggle("hidden", isAdmin);
-  $("#nav-my-portfolio").classList.toggle("hidden", isAdmin);
+  $("#start-button").classList.remove("hidden");
+  $("#demo-button").classList.remove("hidden");
+  $("#nav-new-initiative").classList.remove("hidden");
+  $("#nav-my-portfolio").classList.remove("hidden");
   $("#nav-admin-dashboard").classList.toggle("hidden", !isAdmin);
+  elements.adminRecordOwnerField.classList.toggle("hidden", !isAdmin);
 
   if (isAdmin) {
     await loadAdminData();
+    populateAdminRecordOwners();
+    await loadProjects();
     $("#admin-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     await loadProjects();
@@ -517,7 +609,10 @@ function collectRecord() {
     readiness_recommendation: assessment.recommendation,
     readiness_gaps: assessment.gaps,
     readiness_category_scores: assessment.categoryScores,
-    created_by: currentUser.id
+    created_by:
+      currentProfile?.role === "super_admin" && elements.adminRecordOwner.value
+        ? elements.adminRecordOwner.value
+        : currentUser.id
   };
 }
 
@@ -532,6 +627,7 @@ async function loadProjects() {
   const { data, error } = await supabase
     .from("projects")
     .select("*")
+    .eq("created_by", currentUser.id)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -620,6 +716,9 @@ function editProject(id) {
   if (!project) return;
 
   setValue("#project-id", project.id);
+  if (currentProfile?.role === "super_admin" && elements.adminRecordOwner) {
+    elements.adminRecordOwner.value = project.created_by || currentUser.id;
+  }
   setValue("#initiative-name", project.initiative_name);
   setValue("#department", project.department);
   setValue("#strategic-pillar", project.strategic_pillar);
@@ -691,17 +790,20 @@ function startNewInitiative() {
     return showToast("Sign in before creating an initiative.", true);
   }
 
-  if (currentProfile?.role === "super_admin") {
-    return showToast("Super admins use the enterprise dashboard. Normal users submit initiatives.", true);
-  }
-
   resetForm();
+  if (currentProfile?.role === "super_admin") {
+    elements.adminRecordOwner.value = currentUser.id;
+    showToast("Admin data-entry mode opened. Choose the record owner before submission.");
+  }
   showStep(1);
 }
 
 function resetForm() {
   elements.projectForm.reset();
   elements.projectId.value = "";
+  if (currentProfile?.role === "super_admin" && elements.adminRecordOwner) {
+    elements.adminRecordOwner.value = currentUser?.id || "";
+  }
   $("#progress").value = "0";
   $("#status").value = "Planning";
   $("#current-phase").value = "Idea / Intake";
@@ -779,8 +881,195 @@ async function loadAdminData() {
   adminProfiles = profileResult.data ?? [];
   hideAdminProjectMessage();
   renderAdminKpis();
+  renderAdminCharts();
   renderAdminProjects();
   renderAdminUsers();
+  populateAdminRecordOwners();
+}
+
+
+function populateAdminRecordOwners() {
+  if (!elements.adminRecordOwner || currentProfile?.role !== "super_admin") return;
+
+  const currentValue = elements.adminRecordOwner.value || currentUser.id;
+  const options = [
+    { id: currentUser.id, label: `${currentProfile.full_name || currentUser.email} — Super Admin (my entry)` },
+    ...adminProfiles
+      .filter(profile => profile.id !== currentUser.id && profile.role === "normal_user")
+      .map(profile => ({
+        id: profile.id,
+        label: `${profile.full_name || profile.email} — ${profile.department || "No department"}`
+      }))
+  ];
+
+  elements.adminRecordOwner.innerHTML = options
+    .map(option => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.label)}</option>`)
+    .join("");
+
+  elements.adminRecordOwner.value =
+    options.some(option => option.id === currentValue) ? currentValue : currentUser.id;
+}
+
+function countBy(items, key, expectedValues = []) {
+  const counts = Object.fromEntries(expectedValues.map(value => [value, 0]));
+  items.forEach(item => {
+    const value = item[key] || "Not recorded";
+    counts[value] = (counts[value] || 0) + 1;
+  });
+  return counts;
+}
+
+function averageReadinessByDepartment() {
+  const groups = {};
+  adminProjects.forEach(project => {
+    const department = project.department || "Not recorded";
+    if (!groups[department]) groups[department] = { total: 0, count: 0 };
+    groups[department].total += Number(project.readiness_score || 0);
+    groups[department].count += 1;
+  });
+  return Object.entries(groups)
+    .map(([department, data]) => ({
+      department,
+      average: Math.round(data.total / data.count)
+    }))
+    .sort((a, b) => b.average - a.average);
+}
+
+function destroyAdminCharts() {
+  Object.values(adminCharts).forEach(chart => chart?.destroy());
+  adminCharts = {};
+}
+
+function makeChart(canvasId, config) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return null;
+  return new Chart(canvas, config);
+}
+
+function renderAdminCharts() {
+  destroyAdminCharts();
+
+  const statusOrder = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
+  const riskOrder = ["Low", "Medium", "High", "Extreme"];
+  const pillarOrder = [
+    "Financial Sustainability",
+    "Digital & Data Transformation",
+    "Governance Stewardship",
+    "Customer Experience Transformation",
+    "Workforce & Leadership Transformation"
+  ];
+
+  const statusCounts = countBy(adminProjects, "status", statusOrder);
+  const riskCounts = countBy(adminProjects, "risk_level", riskOrder);
+  const pillarCounts = countBy(adminProjects, "strategic_pillar", pillarOrder);
+  const readiness = averageReadinessByDepartment();
+
+  const sharedOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { enabled: true }
+    }
+  };
+
+  adminCharts.status = makeChart("admin-status-chart", {
+    type: "doughnut",
+    data: {
+      labels: statusOrder,
+      datasets: [{ data: statusOrder.map(label => statusCounts[label] || 0) }]
+    },
+    options: {
+      ...sharedOptions,
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        $("#admin-status-filter").value = statusOrder[elements[0].index];
+        renderAdminProjects();
+        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  });
+
+  adminCharts.pillar = makeChart("admin-pillar-chart", {
+    type: "bar",
+    data: {
+      labels: pillarOrder,
+      datasets: [{ label: "Initiatives", data: pillarOrder.map(label => pillarCounts[label] || 0), borderRadius: 8 }]
+    },
+    options: {
+      ...sharedOptions,
+      indexAxis: "y",
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        $("#admin-pillar-filter").value = pillarOrder[elements[0].index];
+        renderAdminProjects();
+        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  });
+
+  adminCharts.risk = makeChart("admin-risk-chart", {
+    type: "pie",
+    data: {
+      labels: riskOrder,
+      datasets: [{ data: riskOrder.map(label => riskCounts[label] || 0) }]
+    },
+    options: {
+      ...sharedOptions,
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        $("#admin-risk-filter").value = riskOrder[elements[0].index];
+        renderAdminProjects();
+        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  });
+
+  adminCharts.readiness = makeChart("admin-readiness-chart", {
+    type: "bar",
+    data: {
+      labels: readiness.map(item => item.department),
+      datasets: [{ label: "Average readiness (%)", data: readiness.map(item => item.average), borderRadius: 8 }]
+    },
+    options: {
+      ...sharedOptions,
+      scales: { y: { beginAtZero: true, max: 100 } },
+      plugins: { ...sharedOptions.plugins, legend: { display: false } },
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        $("#admin-search").value = readiness[elements[0].index].department;
+        renderAdminProjects();
+        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  });
+
+  const topPillar = Object.entries(pillarCounts).sort((a, b) => b[1] - a[1])[0];
+  const attentionDepartment = [...readiness].sort((a, b) => a.average - b.average)[0];
+  const today = new Date().toISOString().slice(0, 10);
+
+  $("#admin-insight-pillar").textContent =
+    topPillar && topPillar[1] > 0 ? `${topPillar[0]} (${topPillar[1]})` : "No data";
+  $("#admin-insight-department").textContent =
+    attentionDepartment ? `${attentionDepartment.department} (${attentionDepartment.average}%)` : "No data";
+  $("#admin-insight-low-readiness").textContent =
+    adminProjects.filter(project => Number(project.readiness_score || 0) < 70).length;
+  $("#admin-insight-overdue").textContent =
+    adminProjects.filter(project =>
+      project.target_date &&
+      project.target_date < today &&
+      project.status !== "Completed"
+    ).length;
+}
+
+function clearAdminChartFilters() {
+  $("#admin-search").value = "";
+  $("#admin-status-filter").value = "";
+  $("#admin-pillar-filter").value = "";
+  $("#admin-risk-filter").value = "";
+  renderAdminProjects();
+  showToast("Chart and portfolio filters cleared.");
 }
 
 function profileFor(userId) {
@@ -924,6 +1213,112 @@ async function adminDeleteProject(id) {
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return showToast(error.message, true);
   showToast("Project record deleted.");
+  await loadAdminData();
+}
+
+
+function updateAdminCreateUserMethod() {
+  const method = value("#admin-new-user-method");
+  const needsPassword = method === "create";
+
+  elements.adminNewUserPasswordField.classList.toggle("hidden", !needsPassword);
+  elements.adminNewUserPassword.required = needsPassword;
+  elements.adminCreateUserButton.textContent =
+    needsPassword ? "Create Active Normal User" : "Send Invitation";
+}
+
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  const random = new Uint32Array(14);
+  crypto.getRandomValues(random);
+  const password = Array.from(random, value => alphabet[value % alphabet.length]).join("");
+  $("#admin-new-user-password").value = password;
+  $("#admin-new-user-method").value = "create";
+  updateAdminCreateUserMethod();
+  showToast("A temporary password was generated.");
+}
+
+async function copyLastCreatedCredentials() {
+  const email = value("#admin-new-user-email") || lastCreatedCredentials?.email;
+  const password = value("#admin-new-user-password") || lastCreatedCredentials?.password;
+  if (!email || !password) {
+    return showToast("Generate or enter a temporary password first.", true);
+  }
+
+  const text = `HOME31 login\nEmail: ${email}\nTemporary password: ${password}\nPlease change the password after first login.`;
+  await navigator.clipboard.writeText(text);
+  showToast("Login details copied. Share them securely.");
+}
+
+async function adminCreateUser(event) {
+  event.preventDefault();
+
+  if (currentProfile?.role !== "super_admin") {
+    return showToast("Only a super admin can add users.", true);
+  }
+
+  const method = value("#admin-new-user-method");
+  const fullName = value("#admin-new-user-name");
+  const department = value("#admin-new-user-department");
+  const email = value("#admin-new-user-email").toLowerCase();
+  const password = value("#admin-new-user-password");
+
+  if (!fullName || !department || !email) {
+    return showToast("Complete the user's name, department and email.", true);
+  }
+
+  if (method === "create" && password.length < 8) {
+    return showToast("The temporary password must contain at least 8 characters.", true);
+  }
+
+  elements.adminCreateUserButton.disabled = true;
+  elements.adminCreateUserButton.textContent =
+    method === "create" ? "Creating..." : "Sending...";
+
+  const { data, error } = await supabase.functions.invoke("admin-create-user", {
+    body: {
+      method,
+      full_name: fullName,
+      department,
+      email,
+      password: method === "create" ? password : undefined,
+      redirect_to: AUTH_REDIRECT_URL
+    }
+  });
+
+  elements.adminCreateUserButton.disabled = false;
+  updateAdminCreateUserMethod();
+
+  if (error) {
+    let message = error.message || "Unable to create the user.";
+
+    try {
+      if (error.context && typeof error.context.json === "function") {
+        const details = await error.context.json();
+        message = details?.error || details?.message || message;
+      }
+    } catch {
+      // Preserve the original function error when the response body is unavailable.
+    }
+
+    return showToast(message, true);
+  }
+
+  if (method === "create") {
+    lastCreatedCredentials = { email, password };
+  }
+
+  elements.adminCreateUserForm.reset();
+  $("#admin-new-user-method").value = "create";
+  updateAdminCreateUserMethod();
+
+  showToast(
+    data?.message ||
+      (method === "create"
+        ? "The user account was created."
+        : "The invitation email was sent.")
+  );
+
   await loadAdminData();
 }
 

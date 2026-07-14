@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Simplified HOME31 initiative submission and portfolio monitoring workspace.">
-  <title>HOME31 Role-Based Initiative Register V3.2</title>
+  <title>HOME31 Enterprise Initiative Register V4</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -177,6 +177,14 @@
 
             <form id="project-form" class="form-grid">
               <input id="project-id" type="hidden">
+
+              <div id="admin-record-owner-field" class="field full hidden admin-owner-field">
+                <label for="admin-record-owner">Record owner / submit on behalf of <span>*</span></label>
+                <select id="admin-record-owner">
+                  <option value="">Use my super-admin account</option>
+                </select>
+                <small>Select a normal user when the super admin is entering the initiative on that user’s behalf.</small>
+              </div>
 
               <div class="field full">
                 <label for="initiative-name">Initiative name <span>*</span></label>
@@ -517,10 +525,15 @@
           </div>
           <span class="badge burgundy">Organisation-wide access</span>
         </div>
+        <div class="admin-command-bar">
+          <button id="admin-key-in-initiative" class="button gold" type="button">+ Key In New Initiative</button>
+          <button id="admin-jump-users" class="button secondary" type="button">Add Normal User</button>
+          <button id="admin-jump-analytics" class="button light" type="button">View Analytics</button>
+        </div>
         <div class="admin-principles">
           <article><strong>Portfolio oversight</strong><span>All initiatives across every registered user and department.</span></article>
-          <article><strong>Exception focus</strong><span>High-risk, low-readiness and HR-dependent projects are surfaced.</span></article>
-          <article><strong>Role governance</strong><span>Promote trusted accounts to super admin or retain normal-user access.</span></article>
+          <article><strong>Interactive analytics</strong><span>Click chart segments to filter the underlying project portfolio.</span></article>
+          <article><strong>Direct administration</strong><span>Create active users, key in initiatives and manage delivery records.</span></article>
         </div>
       </section>
 
@@ -541,6 +554,43 @@
           <article><span>Average readiness</span><strong id="admin-kpi-readiness">0%</strong></article>
           <article><span>HR collaboration</span><strong id="admin-kpi-hr">0</strong></article>
           <article><span>Completed</span><strong id="admin-kpi-completed">0</strong></article>
+        </div>
+      </section>
+
+      <section id="admin-analytics" class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-label">Interactive portfolio intelligence</span>
+            <h2>Enterprise Analytics</h2>
+            <p>Click a chart item to apply the corresponding portfolio filter. Select “Clear Chart Filters” to return to the complete portfolio.</p>
+          </div>
+          <button id="admin-clear-chart-filters" class="button secondary small" type="button">Clear Chart Filters</button>
+        </div>
+
+        <div class="analytics-grid">
+          <article class="chart-card">
+            <div class="chart-card-heading"><h3>Initiatives by status</h3><span>Delivery position</span></div>
+            <div class="chart-shell"><canvas id="admin-status-chart"></canvas></div>
+          </article>
+          <article class="chart-card">
+            <div class="chart-card-heading"><h3>Strategic pillar coverage</h3><span>HOME31 alignment</span></div>
+            <div class="chart-shell"><canvas id="admin-pillar-chart"></canvas></div>
+          </article>
+          <article class="chart-card">
+            <div class="chart-card-heading"><h3>Risk distribution</h3><span>Exception monitoring</span></div>
+            <div class="chart-shell"><canvas id="admin-risk-chart"></canvas></div>
+          </article>
+          <article class="chart-card">
+            <div class="chart-card-heading"><h3>Readiness by department</h3><span>Average assessment score</span></div>
+            <div class="chart-shell"><canvas id="admin-readiness-chart"></canvas></div>
+          </article>
+        </div>
+
+        <div class="analytics-insights">
+          <article><span>Most represented pillar</span><strong id="admin-insight-pillar">—</strong></article>
+          <article><span>Department needing attention</span><strong id="admin-insight-department">—</strong></article>
+          <article><span>Projects below 70% readiness</span><strong id="admin-insight-low-readiness">0</strong></article>
+          <article><span>Overdue active projects</span><strong id="admin-insight-overdue">0</strong></article>
         </div>
       </section>
 
@@ -595,7 +645,7 @@
           <div>
             <span class="section-label">Temporary user administration</span>
             <h2>Add a User</h2>
-            <p>Create a normal-user account directly or send an invitation email. The privileged Auth operation is performed by a protected Supabase Edge Function.</p>
+            <p>Create an immediately active normal-user account without sending an email. The user can sign in at once using the temporary password assigned here.</p>
           </div>
           <span class="badge green-badge">Super admin only</span>
         </div>
@@ -619,12 +669,12 @@
           <label class="field">
             <span class="field-title">Account method</span>
             <select id="admin-new-user-method">
-              <option value="invite">Send invitation email — recommended</option>
-              <option value="create">Create active account with temporary password</option>
+              <option value="create" selected>Create active account — no email required</option>
+              <option value="invite">Send invitation email</option>
             </select>
           </label>
 
-          <label id="admin-new-user-password-field" class="field full hidden">
+          <label id="admin-new-user-password-field" class="field full">
             <span class="field-title">Temporary password</span>
             <input id="admin-new-user-password" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters">
             <small>Share the password securely and ask the user to change it after the first login.</small>
@@ -635,8 +685,12 @@
             Every account created here starts as <b>Normal User</b>. Promote it later through the User Directory only when super-admin access is genuinely required.
           </div>
 
+          <div class="credential-tools full">
+            <button id="admin-generate-password" class="button light small" type="button">Generate Temporary Password</button>
+            <button id="admin-copy-credentials" class="button secondary small" type="button">Copy Login Details</button>
+          </div>
           <div class="admin-create-user-actions full">
-            <button id="admin-create-user-button" class="button green" type="submit">Send Invitation</button>
+            <button id="admin-create-user-button" class="button green" type="submit">Create Active Normal User</button>
           </div>
         </form>
       </section>
@@ -666,6 +720,7 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
