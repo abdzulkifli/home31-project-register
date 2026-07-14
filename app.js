@@ -1,8 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://jmwduiivsxvtelpjncgr.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5Fvivqq5KnxobZg1kGRxCg_cD9xF9CR";
 
 const configured =
   !SUPABASE_URL.includes("YOUR-PROJECT") &&
