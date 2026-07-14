@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HOME31 Project Register</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Sample Application</p>
+      <h1>HOME31 Project Register</h1>
+    </div>
+    <div id="user-area" class="user-area hidden">
+      <span id="user-email"></span>
+      <button id="logout-button" class="button secondary" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="config-warning" class="notice warning hidden">
+      Update <code>SUPABASE_URL</code> and <code>SUPABASE_PUBLISHABLE_KEY</code>
+      inside <code>app.js</code>.
+    </section>
+
+    <section id="auth-section" class="panel auth-grid">
+      <div>
+        <p class="eyebrow">Secure access</p>
+        <h2>Sign in</h2>
+        <form id="login-form" class="form">
+          <label>Email
+            <input id="login-email" type="email" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input id="login-password" type="password" autocomplete="current-password" minlength="6" required>
+          </label>
+          <button class="button" type="submit">Sign in</button>
+        </form>
+      </div>
+
+      <div>
+        <p class="eyebrow">First-time user</p>
+        <h2>Create account</h2>
+        <form id="signup-form" class="form">
+          <label>Email
+            <input id="signup-email" type="email" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input id="signup-password" type="password" autocomplete="new-password" minlength="6" required>
+          </label>
+          <button class="button secondary" type="submit">Create account</button>
+        </form>
+        <p class="help">Supabase may require email confirmation before the first login.</p>
+      </div>
+    </section>
+
+    <section id="app-section" class="hidden">
+      <div class="summary-grid">
+        <article class="summary-card">
+          <span>Total projects</span>
+          <strong id="total-projects">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>In progress</span>
+          <strong id="in-progress-projects">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Completed</span>
+          <strong id="completed-projects">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Average progress</span>
+          <strong id="average-progress">0%</strong>
+        </article>
+      </div>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Data collection</p>
+            <h2 id="form-title">Add a project</h2>
+          </div>
+          <button id="cancel-edit-button" class="button secondary hidden" type="button">Cancel edit</button>
+        </div>
+
+        <form id="project-form" class="project-form">
+          <input id="project-id" type="hidden">
+
+          <label class="wide">Project name
+            <input id="project-name" type="text" maxlength="150" required>
+          </label>
+
+          <label>Strategic pillar
+            <select id="strategic-pillar" required>
+              <option value="">Select a pillar</option>
+              <option>Financial Sustainability</option>
+              <option>Digital & Data Transformation</option>
+              <option>Governance Stewardship</option>
+              <option>Customer Experience Transformation</option>
+              <option>Workforce & Leadership Transformation</option>
+            </select>
+          </label>
+
+          <label>Department
+            <input id="department" type="text" maxlength="120" required>
+          </label>
+
+          <label>Project owner
+            <input id="project-owner" type="text" maxlength="120" required>
+          </label>
+
+          <label>Status
+            <select id="status" required>
+              <option>Planning</option>
+              <option>In Progress</option>
+              <option>At Risk</option>
+              <option>On Hold</option>
+              <option>Completed</option>
+            </select>
+          </label>
+
+          <label>Progress (%)
+            <input id="progress" type="number" min="0" max="100" value="0" required>
+          </label>
+
+          <label>Start date
+            <input id="start-date" type="date">
+          </label>
+
+          <label>Target end date
+            <input id="target-end-date" type="date">
+          </label>
+
+          <label class="wide">Project objective
+            <textarea id="description" rows="3" maxlength="2000"></textarea>
+          </label>
+
+          <label class="wide">Key deliverables
+            <textarea id="key-deliverables" rows="3" maxlength="2000"></textarea>
+          </label>
+
+          <label class="wide">Risks and issues
+            <textarea id="risks-issues" rows="3" maxlength="2000"></textarea>
+          </label>
+
+          <label class="wide">Next milestone
+            <textarea id="next-milestone" rows="2" maxlength="1000"></textarea>
+          </label>
+
+          <div class="wide actions">
+            <button id="save-button" class="button" type="submit">Save project</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">My submissions</p>
+            <h2>Projects</h2>
+          </div>
+          <button id="refresh-button" class="button secondary" type="button">Refresh</button>
+        </div>
+
+        <div id="project-message" class="notice hidden"></div>
+        <div id="project-list" class="project-list"></div>
+      </section>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
