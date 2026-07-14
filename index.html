@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Simplified HOME31 initiative submission and portfolio monitoring workspace.">
-  <title>HOME31 Role-Based Initiative Register</title>
+  <title>HOME31 Role-Based Initiative Register V3.2</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -119,7 +119,11 @@
             <input id="signup-password" type="password" autocomplete="new-password" minlength="6" required>
           </label>
           <button class="button secondary" type="submit">Register</button>
-          <p class="field-note">New registrations are assigned the <b>Normal User</b> role. A current super admin must promote another account.</p>
+          <button id="resend-confirmation-button" class="button light" type="button">Resend confirmation email</button>
+          <p class="field-note">
+            New registrations are assigned the <b>Normal User</b> role.
+            Confirmation links are single-use. Use the resend button if a link has expired.
+          </p>
         </form>
       </div>
     </section>
@@ -584,6 +588,57 @@
 
         <div id="admin-project-message" class="notice blue hidden"></div>
         <div id="admin-project-list" class="admin-project-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-label">Temporary user administration</span>
+            <h2>Add a User</h2>
+            <p>Create a normal-user account directly or send an invitation email. The privileged Auth operation is performed by a protected Supabase Edge Function.</p>
+          </div>
+          <span class="badge green-badge">Super admin only</span>
+        </div>
+
+        <form id="admin-create-user-form" class="admin-create-user-form">
+          <label class="field">
+            <span class="field-title">Full name</span>
+            <input id="admin-new-user-name" type="text" maxlength="120" placeholder="User's full name" required>
+          </label>
+
+          <label class="field">
+            <span class="field-title">Department</span>
+            <input id="admin-new-user-department" type="text" maxlength="120" placeholder="Department or division" required>
+          </label>
+
+          <label class="field">
+            <span class="field-title">Email address</span>
+            <input id="admin-new-user-email" type="email" autocomplete="off" placeholder="user@example.com" required>
+          </label>
+
+          <label class="field">
+            <span class="field-title">Account method</span>
+            <select id="admin-new-user-method">
+              <option value="invite">Send invitation email — recommended</option>
+              <option value="create">Create active account with temporary password</option>
+            </select>
+          </label>
+
+          <label id="admin-new-user-password-field" class="field full hidden">
+            <span class="field-title">Temporary password</span>
+            <input id="admin-new-user-password" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters">
+            <small>Share the password securely and ask the user to change it after the first login.</small>
+          </label>
+
+          <div class="admin-create-user-note full">
+            <strong>Default access:</strong>
+            Every account created here starts as <b>Normal User</b>. Promote it later through the User Directory only when super-admin access is genuinely required.
+          </div>
+
+          <div class="admin-create-user-actions full">
+            <button id="admin-create-user-button" class="button green" type="submit">Send Invitation</button>
+          </div>
+        </form>
       </section>
 
       <section class="panel">
