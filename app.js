@@ -1,7 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
@@ -47,6 +47,9 @@ const DISPLAY_MODES = ["standard", "comfortable", "large"];
 let currentDisplaySize = "comfortable";
 let highContrastEnabled = false;
 let tableEnhancementScheduled = false;
+let selectedUserYear = "all";
+let initiativeDraftTimer = null;
+let initiativeDraftRestored = false;
 let responsiveTableObserver = null;
 
 
@@ -119,6 +122,17 @@ function bindEvents() {
     renderUserInitiatives();
   });
 
+  $("#user-year-select").addEventListener("change", event => {
+    selectedUserYear = event.target.value;
+    renderUserDashboard();
+    renderUserInitiatives();
+    renderReadiness();
+  });
+
+  $$("[data-user-action]").forEach(button =>
+    button.addEventListener("click", () => filterUserPortfolioByAction(button.dataset.userAction))
+  );
+
   $("#admin-search").addEventListener("input", renderAdminPortfolio);
   ["#admin-status-filter", "#admin-pillar-filter", "#admin-risk-filter"].forEach(selector =>
     $(selector).addEventListener("change", renderAdminPortfolio)
@@ -148,6 +162,9 @@ function bindEvents() {
   $("#cancel-initiative-modal").addEventListener("click", closeInitiativeModal);
   $("#initiative-next-step").addEventListener("click", nextInitiativeStep);
   $("#initiative-previous-step").addEventListener("click", previousInitiativeStep);
+  $("#initiative-save-draft").addEventListener("click", () => saveInitiativeDraft(true));
+  $("#initiative-restore-draft").addEventListener("click", restoreInitiativeDraft);
+  $("#initiative-discard-draft").addEventListener("click", discardInitiativeDraft);
   $$(".initiative-step").forEach(button =>
     button.addEventListener("click", () => goToInitiativeStep(Number(button.dataset.formStep)))
   );
@@ -155,10 +172,14 @@ function bindEvents() {
     element.addEventListener("input", () => {
       updateInitiativeFormMetrics();
       renderBudgetSummary();
+      updateConditionalFormSections();
+      scheduleInitiativeDraftSave();
     });
     element.addEventListener("change", () => {
       updateInitiativeFormMetrics();
       renderBudgetSummary();
+      updateConditionalFormSections();
+      scheduleInitiativeDraftSave();
     });
   });
   $$(".evidence-status").forEach(element =>
@@ -426,6 +447,7 @@ async function loadUserProjects() {
 
   if (error) return showToast(error.message, true);
   userProjects = data || [];
+  populateUserYearOptions();
   renderUserDashboard();
   renderUserInitiatives();
   renderReadiness();
@@ -1041,12 +1063,19 @@ function openInitiativeModal(projectId = null) {
   renderInitiativeFormStep();
   updateEvidencePresentation();
   renderBudgetSummary();
+  updateConditionalFormSections();
   updateInitiativeFormMetrics();
+  checkAvailableInitiativeDraft(projectId);
   $("#initiative-modal").classList.remove("hidden");
+  document.body.classList.add("initiative-workspace-open");
+  initiativeDraftRestored = false;
+  window.setTimeout(() => $("#initiative-name")?.focus(), 80);
 }
 
 function closeInitiativeModal() {
   $("#initiative-modal").classList.add("hidden");
+  document.body.classList.remove("initiative-workspace-open");
+  window.clearTimeout(initiativeDraftTimer);
 }
 
 function goToInitiativeStep(step) {
@@ -1083,6 +1112,8 @@ function renderInitiativeFormStep() {
 
   if (currentInitiativeFormStep === 4) renderBudgetSummary();
   if (currentInitiativeFormStep === 7) renderInitiativeReviewSummary();
+  updateInitiativeWorkspaceSummary();
+  $(".initiative-workspace-main")?.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function validateInitiativeStep(step) {
@@ -1171,6 +1202,8 @@ function updateInitiativeFormMetrics() {
   const score = Math.round(complete / fields.length * 100);
   $("#initiative-form-completion").textContent = `${score}%`;
   $("#initiative-form-completion-bar").style.width = `${score}%`;
+
+  updateInitiativeWorkspaceSummary(score);
 
   if (currentInitiativeFormStep === 7) renderInitiativeReviewSummary();
 }
@@ -1369,8 +1402,9 @@ async function saveInitiative(event) {
 
   if (response.error) return showToast(response.error.message, true);
 
+  clearInitiativeDraft();
   closeInitiativeModal();
-  showToast(id ? "Excel-aligned comprehensive initiative updated." : "Excel-aligned comprehensive initiative created.");
+  showToast(id ? "Comprehensive initiative updated." : "Comprehensive initiative created.");
 
   await loadUserProjects();
   if (currentProfile.role === "super_admin") await loadAdminData();
@@ -1959,4 +1993,707 @@ function updateChartReadability() {
     chart.resize();
     chart.update("none");
   });
+}
+
+
+/* ================================================================
+   V7.7 NORMAL USER TRACKING + FULL PAGE INITIATIVE WORKSPACE
+   ================================================================ */
+
+const INITIATIVE_STEP_NAMES = [
+  "Profile & Ownership",
+  "Strategy & ICT",
+  "Value & Delivery",
+  "Financial Assessment",
+  "HR & Change",
+  "Supporting Evidence",
+  "Review & Submit"
+];
+
+function populateUserYearOptions() {
+  const years = [...new Set(
+    userProjects
+      .map(project => Number(project.implementation_year || 2027))
+      .filter(Number.isFinite)
+  )].sort((a, b) => b - a);
+
+  $("#user-year-select").innerHTML = [
+    '<option value="all">All Years</option>',
+    ...years.map(year => `<option value="${year}">AMP${year}</option>`)
+  ].join("");
+
+  const valid = new Set(["all", ...years.map(String)]);
+  if (!valid.has(String(selectedUserYear))) {
+    selectedUserYear = years.length ? String(years[0]) : "all";
+  }
+  $("#user-year-select").value = String(selectedUserYear);
+}
+
+function userDashboardProjects() {
+  if (selectedUserYear === "all") return userProjects.slice();
+  return userProjects.filter(
+    project => Number(project.implementation_year || 2027) === Number(selectedUserYear)
+  );
+}
+
+function userYearLabel() {
+  return selectedUserYear === "all" ? "All Years" : `AMP${selectedUserYear}`;
+}
+
+function renderUserDashboard() {
+  const records = userDashboardProjects();
+  const total = records.length;
+  const inProgress = records.filter(project => project.status === "In Progress").length;
+  const atRisk = records.filter(project =>
+    project.status === "At Risk" || ["High", "Extreme"].includes(project.risk_level)
+  ).length;
+  const completed = records.filter(project => project.status === "Completed").length;
+  const averageProgress = total
+    ? Math.round(records.reduce((sum, project) => sum + Number(project.progress || 0), 0) / total)
+    : 0;
+  const averageReadiness = total
+    ? Math.round(records.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
+    : 0;
+  const averageEvidence = total
+    ? Math.round(records.reduce((sum, project) => sum + Number(project.evidence_completeness || 0), 0) / total)
+    : 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const overdue = records.filter(project => {
+    if (!project.target_date || project.status === "Completed") return false;
+    return new Date(`${project.target_date}T00:00:00`) < today;
+  });
+  const lowReadiness = records.filter(project => Number(project.readiness_score || 0) < 70);
+  const lowEvidence = records.filter(project => Number(project.evidence_completeness || 0) < 70);
+  const hrPending = records.filter(project =>
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status) &&
+    !["Supported", "Not required"].includes(project.hr_review_status)
+  );
+  const ictPending = records.filter(project =>
+    project.ict_classification === "New - Pending ICT review" ||
+    ((project.system_type && project.system_type !== "Non System") &&
+      !["Low", "Medium", "High"].includes(project.ict_classification))
+  );
+
+  $("#user-kpi-total").textContent = total;
+  $("#user-kpi-total-note").textContent = `${userYearLabel()} portfolio`;
+  $("#user-kpi-progress").textContent = inProgress;
+  $("#user-kpi-risk").textContent = atRisk;
+  $("#user-kpi-average").textContent = `${averageProgress}%`;
+  $("#user-kpi-readiness").textContent = `${averageReadiness}%`;
+  $("#user-kpi-evidence").textContent = `${averageEvidence}%`;
+
+  $("#user-action-overdue").textContent = overdue.length;
+  $("#user-action-readiness").textContent = lowReadiness.length;
+  $("#user-action-evidence").textContent = lowEvidence.length;
+  $("#user-action-review").textContent = new Set([...hrPending, ...ictPending]).size;
+
+  const ownershipComplete = records.filter(project =>
+    project.executive_sponsor && project.accountable_owner && project.delivery_lead
+  ).length;
+  const targetComplete = records.filter(project => project.target_date).length;
+  $("#user-assurance-ownership").textContent =
+    `${total ? Math.round(ownershipComplete / total * 100) : 0}%`;
+  $("#user-assurance-target").textContent =
+    `${total ? Math.round(targetComplete / total * 100) : 0}%`;
+  $("#user-assurance-hr").textContent = hrPending.length;
+  $("#user-assurance-ict").textContent = ictPending.length;
+  $("#user-assurance-completed").textContent = completed;
+
+  const criticalCount = overdue.length + atRisk;
+  const health = !total
+    ? "No records"
+    : criticalCount > 0 || averageReadiness < 60
+      ? "Attention required"
+      : averageReadiness < 80 || averageEvidence < 70
+        ? "Watch"
+        : "On track";
+
+  const badge = $("#user-health-badge");
+  badge.textContent = `${userYearLabel()} · ${health}`;
+  badge.className = `user-command-chip ${
+    health === "On track" ? "good" : health === "Watch" ? "watch" : health === "No records" ? "" : "critical"
+  }`;
+
+  const nearest = upcomingUserMilestones(records)[0];
+  $("#user-delivery-insight").textContent = total
+    ? `${userYearLabel()} contains ${total} initiative${total === 1 ? "" : "s"}. Average delivery progress is ${averageProgress}%, readiness is ${averageReadiness}% and evidence completeness is ${averageEvidence}%. ` +
+      `${criticalCount ? `${criticalCount} risk or overdue signal${criticalCount === 1 ? "" : "s"} require attention.` : "No overdue or at-risk signal is currently recorded."}` +
+      `${nearest ? ` The nearest target is ${nearest.project.initiative_name} on ${formatUserDate(nearest.project.target_date)}.` : ""}`
+    : `No initiatives are currently recorded for ${userYearLabel()}. Create an initiative to begin tracking delivery, readiness and evidence.`;
+
+  $("#user-insight-facts").innerHTML = `
+    <article><strong>${completed} completed</strong><span>${inProgress} initiatives are currently in progress.</span></article>
+    <article><strong>${lowReadiness.length} readiness follow-ups</strong><span>${lowEvidence.length} initiatives have evidence below 70%.</span></article>
+    <article><strong>${hrPending.length + ictPending.length} specialist reviews</strong><span>HR and ICT follow-up requirements.</span></article>
+  `;
+
+  const actionRecords = uniqueProjects([
+    ...overdue,
+    ...records.filter(project => project.status === "At Risk"),
+    ...lowReadiness,
+    ...lowEvidence,
+    ...hrPending,
+    ...ictPending
+  ]).slice(0, 5);
+
+  $("#user-priority-actions").innerHTML = actionRecords.length
+    ? actionRecords.map(project => `
+      <div class="user-action-item">
+        <div>
+          <strong>${escapeHtml(project.initiative_name)}</strong>
+          <span>${escapeHtml(userActionReason(project, today))}</span>
+        </div>
+        <button data-user-open-project="${project.id}" type="button">Open</button>
+      </div>
+    `).join("")
+    : '<div class="admin-command-empty">No priority action is currently outstanding.</div>';
+
+  renderUserMilestones(records);
+  renderUserTracker(records);
+  renderUserTrackingCharts(records);
+  bindUserDashboardActions();
+}
+
+function uniqueProjects(records) {
+  const map = new Map();
+  records.forEach(project => {
+    if (project?.id) map.set(String(project.id), project);
+  });
+  return [...map.values()];
+}
+
+function userActionReason(project, today = new Date()) {
+  const reasons = [];
+  if (project.target_date && project.status !== "Completed") {
+    const due = new Date(`${project.target_date}T00:00:00`);
+    if (due < today) reasons.push(`Overdue since ${formatUserDate(project.target_date)}`);
+  }
+  if (project.status === "At Risk" || ["High", "Extreme"].includes(project.risk_level)) {
+    reasons.push(`${project.risk_level || "High"} risk`);
+  }
+  if (Number(project.readiness_score || 0) < 70) {
+    reasons.push(`${Number(project.readiness_score || 0)}% readiness`);
+  }
+  if (Number(project.evidence_completeness || 0) < 70) {
+    reasons.push(`${Number(project.evidence_completeness || 0)}% evidence`);
+  }
+  if (
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status) &&
+    !["Supported", "Not required"].includes(project.hr_review_status)
+  ) reasons.push("HR review pending");
+  if (project.ict_classification === "New - Pending ICT review") reasons.push("ICT review pending");
+  return reasons.slice(0, 3).join(" · ") || "Update the latest delivery position";
+}
+
+function upcomingUserMilestones(records) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return records
+    .filter(project => project.target_date && project.status !== "Completed")
+    .map(project => {
+      const date = new Date(`${project.target_date}T00:00:00`);
+      const days = Math.ceil((date - today) / 86400000);
+      return { project, date, days };
+    })
+    .sort((a, b) => a.date - b.date);
+}
+
+function renderUserMilestones(records) {
+  const milestones = upcomingUserMilestones(records).slice(0, 7);
+
+  $("#user-milestone-list").innerHTML = milestones.length
+    ? milestones.map(item => `
+      <div class="user-milestone-item">
+        <div>
+          <strong>${escapeHtml(item.project.initiative_name)}</strong>
+          <span>${escapeHtml(item.project.next_action || "Review delivery plan and next milestone")}</span>
+          <span class="user-deadline-chip ${item.days < 0 ? "overdue" : ""}">
+            ${item.days < 0 ? `${Math.abs(item.days)} days overdue` : item.days === 0 ? "Due today" : `${item.days} days remaining`}
+          </span>
+        </div>
+        <button data-user-open-project="${item.project.id}" type="button">${formatUserDate(item.project.target_date)}</button>
+      </div>
+    `).join("")
+    : '<div class="admin-command-empty">No upcoming target date is recorded for the selected year.</div>';
+}
+
+function renderUserTracker(records) {
+  const sorted = records
+    .slice()
+    .sort((a, b) =>
+      Number(a.status === "At Risk") * -10 +
+      Number(a.target_date || "9999-12-31".replaceAll("-", "")) -
+      (Number(b.status === "At Risk") * -10 +
+       Number(b.target_date || "9999-12-31".replaceAll("-", "")))
+    )
+    .slice(0, 8);
+
+  $("#user-tracker-grid").innerHTML = sorted.length
+    ? sorted.map(project => `
+      <article class="user-tracker-card ${project.status === "At Risk" ? "at-risk" : project.status === "Completed" ? "completed" : ""}">
+        <div class="user-tracker-card-head">
+          <div>
+            <strong>${escapeHtml(project.initiative_name)}</strong>
+            <span>AMP${Number(project.implementation_year || 2027)} · ${escapeHtml(project.status)} · ${escapeHtml(project.risk_level)} risk</span>
+          </div>
+          <span class="status-pill">${escapeHtml(project.priority_status || "Not assessed")}</span>
+        </div>
+
+        <div class="user-tracker-measures">
+          <article><span>Progress</span><strong>${Number(project.progress || 0)}%</strong></article>
+          <article><span>Readiness</span><strong>${Number(project.readiness_score || 0)}%</strong></article>
+          <article><span>Evidence</span><strong>${Number(project.evidence_completeness || 0)}%</strong></article>
+        </div>
+
+        <div class="progress-track"><span style="width:${Number(project.progress || 0)}%"></span></div>
+        <div class="user-tracker-next"><strong>Next:</strong> ${escapeHtml(project.next_action || "No immediate action recorded")}</div>
+
+        <div class="user-tracker-actions">
+          <button data-user-open-project="${project.id}" type="button">Open & Update</button>
+        </div>
+      </article>
+    `).join("")
+    : '<div class="admin-command-empty">No initiatives are available for this tracking year.</div>';
+}
+
+function renderUserTrackingCharts(records) {
+  charts.userStatus?.destroy();
+  charts.userProgress?.destroy();
+  charts.userPillar?.destroy();
+  if (typeof Chart === "undefined") return;
+
+  const shortened = records.slice(0, 12);
+  charts.userProgress = new Chart($("#user-progress-chart"), {
+    type: "bar",
+    data: {
+      labels: shortened.map(project => truncateUserLabel(project.initiative_name, 28)),
+      datasets: [
+        {
+          label: "Progress",
+          data: shortened.map(project => Number(project.progress || 0)),
+          backgroundColor: "#d1ad63",
+          borderRadius: 6
+        },
+        {
+          label: "Readiness",
+          data: shortened.map(project => Number(project.readiness_score || 0)),
+          backgroundColor: "#57999b",
+          borderRadius: 6
+        },
+        {
+          label: "Evidence",
+          data: shortened.map(project => Number(project.evidence_completeness || 0)),
+          backgroundColor: "#7f99af",
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      ...baseChartOptions(),
+      indexAxis: "y",
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        const project = shortened[elements[0].index];
+        if (project) openInitiativeModal(project.id);
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          max: 100,
+          grid: { color: "rgba(150,185,205,.16)" },
+          ticks: { color: "#c6d7e0", callback: value => `${value}%` }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: "#dbe7ed" }
+        }
+      },
+      plugins: userDarkChartPlugins()
+    }
+  });
+
+  const statuses = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
+  const statusColours = ["#7f99af", "#57999b", "#d26066", "#d1ad63", "#6ca69b"];
+
+  charts.userStatus = new Chart($("#user-status-chart"), {
+    type: "doughnut",
+    data: {
+      labels: statuses,
+      datasets: [{
+        data: statuses.map(status => records.filter(project => project.status === status).length),
+        backgroundColor: statusColours,
+        borderColor: "#102f49",
+        borderWidth: 4,
+        cutout: "62%"
+      }]
+    },
+    options: {
+      ...baseChartOptions(),
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        const status = statuses[elements[0].index];
+        $("#user-status-filter").value = status;
+        showModule("my-initiatives");
+        renderUserInitiatives();
+      },
+      plugins: userDarkChartPlugins()
+    }
+  });
+
+  const pillarCounts = pillars.map(pillar =>
+    records.filter(project => project.strategic_pillar === pillar).length
+  );
+  charts.userPillar = new Chart($("#user-pillar-chart"), {
+    type: "bar",
+    data: {
+      labels: pillars.map(shortPillar),
+      datasets: [{
+        label: "Initiatives",
+        data: pillarCounts,
+        backgroundColor: ["#d1ad63", "#57999b", "#7f99af", "#6ca69b", "#a76a6f"],
+        borderRadius: 7
+      }]
+    },
+    options: {
+      ...baseChartOptions(),
+      indexAxis: "y",
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: "rgba(150,185,205,.16)" },
+          ticks: { color: "#c6d7e0", precision: 0 }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: "#dbe7ed" }
+        }
+      },
+      plugins: {
+        ...userDarkChartPlugins(),
+        legend: { display: false }
+      }
+    }
+  });
+
+  $("#user-status-summary").innerHTML = statuses.map((status, index) =>
+    `<span>${escapeHtml(status)}: ${charts.userStatus.data.datasets[0].data[index]}</span>`
+  ).join("");
+
+  updateChartReadability();
+}
+
+function userDarkChartPlugins() {
+  return {
+    legend: {
+      position: "bottom",
+      labels: {
+        color: "#c6d7e0",
+        usePointStyle: true,
+        boxWidth: 10,
+        padding: 16,
+        font: { size: chartFontSize() }
+      }
+    },
+    tooltip: {
+      backgroundColor: "#061b2b",
+      titleColor: "#fff",
+      bodyColor: "#d3e1e8",
+      borderColor: "#52748a",
+      borderWidth: 1,
+      padding: 11
+    }
+  };
+}
+
+function truncateUserLabel(value, maxLength) {
+  const text = String(value || "");
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function bindUserDashboardActions() {
+  $$("[data-user-open-project]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal(button.dataset.userOpenProject))
+  );
+}
+
+function filterUserPortfolioByAction(action) {
+  const records = userDashboardProjects();
+  let projects = [];
+
+  if (action === "overdue") {
+    const today = new Date().toISOString().slice(0, 10);
+    projects = records.filter(project =>
+      project.target_date && project.target_date < today && project.status !== "Completed"
+    );
+  } else if (action === "readiness") {
+    projects = records.filter(project => Number(project.readiness_score || 0) < 70);
+  } else if (action === "evidence") {
+    projects = records.filter(project => Number(project.evidence_completeness || 0) < 70);
+  } else {
+    projects = records.filter(project =>
+      (
+        ["Required", "To be confirmed"].includes(project.hr_collaboration_status) &&
+        !["Supported", "Not required"].includes(project.hr_review_status)
+      ) ||
+      project.ict_classification === "New - Pending ICT review"
+    );
+  }
+
+  $("#user-search").value = projects.length === 1 ? projects[0].initiative_name : "";
+  $("#user-status-filter").value = "";
+  showModule("my-initiatives");
+  renderUserInitiatives(projects.length > 1 ? new Set(projects.map(project => String(project.id))) : null);
+}
+
+function renderUserInitiatives(forcedIds = null) {
+  const query = ($("#user-search").value || "").toLowerCase();
+  const status = $("#user-status-filter").value || "";
+  const records = userDashboardProjects();
+
+  const filtered = records.filter(project =>
+    (!forcedIds || forcedIds.has(String(project.id))) &&
+    (!query || project.initiative_name.toLowerCase().includes(query)) &&
+    (!status || project.status === status)
+  );
+
+  $("#user-initiative-list").innerHTML = filtered.length
+    ? filtered.map(project => initiativeCard(project, false)).join("")
+    : '<div class="notice blue">No matching initiatives for the selected year.</div>';
+
+  $$("[data-edit-project]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal(button.dataset.editProject))
+  );
+  $$("[data-delete-project]").forEach(button =>
+    button.addEventListener("click", () => deleteInitiative(button.dataset.deleteProject))
+  );
+}
+
+function renderReadiness() {
+  const records = userDashboardProjects();
+  const total = records.length;
+  const average = total
+    ? Math.round(records.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
+    : 0;
+  const low = records.filter(project => Number(project.readiness_score || 0) < 70).length;
+  const hr = records.filter(project =>
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
+  ).length;
+  const risk = records.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
+
+  $("#readiness-average").textContent = `${average}%`;
+  $("#readiness-low").textContent = low;
+  $("#readiness-hr").textContent = hr;
+  $("#readiness-risk").textContent = risk;
+
+  $("#readiness-list").innerHTML = records.length
+    ? records.map(project => `
+      <article class="readiness-card">
+        <div class="initiative-card-head">
+          <div>
+            <strong>${escapeHtml(project.initiative_name)}</strong>
+            <span>AMP${Number(project.implementation_year || 2027)} · ${escapeHtml(project.strategic_pillar)} · ${escapeHtml(project.risk_level)} risk</span>
+          </div>
+          <span class="status-pill">${Number(project.readiness_score || 0)}% ready</span>
+        </div>
+        <div class="progress-track"><span style="width:${Number(project.readiness_score || 0)}%"></span></div>
+        <span>HR collaboration: ${escapeHtml(project.hr_collaboration_status || "Not required")} · People impact: ${escapeHtml(project.people_impact_level || "Not assessed")}</span>
+        <span>Training plan: ${escapeHtml(project.training_plan_status || "Not assessed")} · Change plan: ${escapeHtml(project.change_plan_status || "Not assessed")}</span>
+        <span>Evidence: ${Number(project.evidence_completeness || 0)}% · ICT: ${escapeHtml(project.ict_classification || "Not assessed")}</span>
+      </article>
+    `).join("")
+    : '<div class="notice blue">No initiatives available for the selected year.</div>';
+}
+
+function formatUserDate(value) {
+  if (!value) return "Not recorded";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-MY", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+/* ---------------- Full-page initiative workspace ---------------- */
+
+function updateInitiativeWorkspaceSummary(completionScore = null) {
+  const stepName = INITIATIVE_STEP_NAMES[currentInitiativeFormStep - 1];
+  const score = completionScore ?? Number(
+    String($("#initiative-form-completion")?.textContent || "0").replace("%", "")
+  );
+
+  $("#initiative-workspace-step-title").textContent = stepName;
+  $("#workspace-current-step").textContent = `${currentInitiativeFormStep} of 7`;
+  $("#workspace-current-step-name").textContent = stepName;
+  $("#workspace-summary-completion").textContent = `${score}%`;
+  $("#workspace-summary-completion-bar").style.width = `${score}%`;
+  $("#workspace-summary-progress").textContent = `${Number($("#initiative-progress").value || 0)}%`;
+  $("#workspace-summary-readiness").textContent = `${Number($("#initiative-readiness").value || 0)}%`;
+  $("#workspace-summary-evidence").textContent = `${calculateEvidenceScore()}%`;
+  $("#workspace-summary-target").textContent = formatUserDate($("#initiative-target-date").value);
+  $("#workspace-summary-hr").textContent = $("#initiative-hr-review-status").value || "Not submitted";
+  $("#workspace-summary-ict").textContent = $("#initiative-ict-classification").value || "N/A";
+
+  const requiredFields = [...$("#initiative-form").querySelectorAll("[required]")]
+    .filter(field => !field.disabled && !field.closest(".conditional-hidden"));
+
+  const missing = requiredFields.filter(field => {
+    if (field.type === "checkbox") return !field.checked;
+    return !String(field.value || "").trim();
+  });
+
+  $("#workspace-missing-count").textContent = missing.length;
+  $("#workspace-missing-list").innerHTML = missing.length
+    ? missing.slice(0, 6).map(field => {
+        const label = field.closest("label")?.querySelector(":scope > span")?.textContent
+          ?.replace("*", "")
+          .trim() || field.id;
+        return `<span>${escapeHtml(label)}</span>`;
+      }).join("")
+    : '<span>All mandatory fields are completed.</span>';
+}
+
+function updateConditionalFormSections() {
+  const hrRequired = $("#initiative-hr").value !== "Not required";
+  const hrConditionalIds = [
+    "initiative-people-impact",
+    "initiative-affected-groups",
+    "initiative-roles-affected",
+    "initiative-hr-owner",
+    "initiative-new-roles-required",
+    "initiative-redeployment-required",
+    "initiative-org-design-impact",
+    "initiative-capability-gap",
+    "initiative-training-required",
+    "initiative-training-plan-status",
+    "initiative-change-required",
+    "initiative-change-plan-status",
+    "initiative-communication-plan-status",
+    "initiative-hr-review-status",
+    "initiative-hr-comments"
+  ];
+
+  hrConditionalIds.forEach(id => {
+    const field = $(`#${id}`)?.closest(".field");
+    field?.classList.toggle("conditional-hidden", !hrRequired);
+  });
+
+  const ictRequired =
+    $("#initiative-system-type").value !== "Non System" ||
+    !["N/A", "None"].includes($("#initiative-ict-classification").value);
+  $("#initiative-ict-remarks")
+    ?.closest(".field")
+    ?.classList.toggle("conditional-hidden", !ictRequired);
+
+  const trainingRequired = $("#initiative-training-required").value !== "No";
+  $("#initiative-training-plan-status")
+    ?.closest(".field")
+    ?.classList.toggle("conditional-hidden", !trainingRequired);
+
+  updateInitiativeWorkspaceSummary();
+}
+
+function initiativeDraftKey() {
+  const userId = currentUser?.id || "anonymous";
+  const recordId = $("#initiative-id")?.value || "new";
+  return `home31-initiative-draft-${userId}-${recordId}`;
+}
+
+function serialiseInitiativeForm() {
+  const data = {};
+  [...$("#initiative-form").elements].forEach(field => {
+    if (!field.id || ["submit", "button"].includes(field.type)) return;
+    data[field.id] = field.type === "checkbox" ? field.checked : field.value;
+  });
+
+  return {
+    savedAt: new Date().toISOString(),
+    step: currentInitiativeFormStep,
+    data
+  };
+}
+
+function scheduleInitiativeDraftSave() {
+  if ($("#initiative-modal").classList.contains("hidden")) return;
+
+  const status = $("#initiative-autosave-status");
+  status.textContent = "Saving draft…";
+  status.className = "initiative-autosave-status saving";
+
+  window.clearTimeout(initiativeDraftTimer);
+  initiativeDraftTimer = window.setTimeout(() => saveInitiativeDraft(false), 850);
+}
+
+function saveInitiativeDraft(showMessage = false) {
+  try {
+    localStorage.setItem(initiativeDraftKey(), JSON.stringify(serialiseInitiativeForm()));
+    const status = $("#initiative-autosave-status");
+    status.textContent = `Draft saved ${new Date().toLocaleTimeString("en-MY", {
+      hour: "2-digit",
+      minute: "2-digit"
+    })}`;
+    status.className = "initiative-autosave-status saved";
+    if (showMessage) showToast("Initiative draft saved on this device.");
+  } catch (_error) {
+    $("#initiative-autosave-status").textContent = "Draft could not be saved";
+  }
+}
+
+function checkAvailableInitiativeDraft(projectId) {
+  $("#initiative-draft-banner").classList.add("hidden");
+  if (projectId) return;
+
+  try {
+    const draft = JSON.parse(localStorage.getItem(initiativeDraftKey()) || "null");
+    if (draft?.data && Object.keys(draft.data).length) {
+      $("#initiative-draft-banner").classList.remove("hidden");
+    }
+  } catch (_error) {
+    // Ignore invalid local draft.
+  }
+}
+
+function restoreInitiativeDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(initiativeDraftKey()) || "null");
+    if (!draft?.data) return;
+
+    Object.entries(draft.data).forEach(([id, value]) => {
+      const field = $(`#${id}`);
+      if (!field) return;
+      if (field.type === "checkbox") field.checked = Boolean(value);
+      else field.value = value ?? "";
+    });
+
+    currentInitiativeFormStep = Number(draft.step || 1);
+    initiativeDraftRestored = true;
+    $("#initiative-draft-banner").classList.add("hidden");
+    renderInitiativeFormStep();
+    updateConditionalFormSections();
+    updateEvidencePresentation();
+    renderBudgetSummary();
+    updateInitiativeFormMetrics();
+    showToast("Saved initiative draft restored.");
+  } catch (_error) {
+    showToast("The saved draft could not be restored.", true);
+  }
+}
+
+function discardInitiativeDraft() {
+  clearInitiativeDraft();
+  $("#initiative-draft-banner").classList.add("hidden");
+  $("#initiative-autosave-status").textContent = "Draft discarded";
+  showToast("Saved draft discarded.");
+}
+
+function clearInitiativeDraft() {
+  try {
+    localStorage.removeItem(initiativeDraftKey());
+  } catch (_error) {
+    // Ignore local storage errors.
+  }
 }

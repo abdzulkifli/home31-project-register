@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="HOME31 Enterprise Management Platform V7.6 — senior-friendly accessible edition">
   <meta name="theme-color" content="#061b2b">
-  <title>HOME31 Enterprise Management Platform V7.6</title>
+  <title>HOME31 Enterprise Management Platform V7.7</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -191,7 +191,7 @@
 
       <div class="sidebar-footer">
         <button id="logout-button" class="sidebar-logout" type="button">Sign out</button>
-        <span>HOME31 Platform V7.6</span>
+        <span>HOME31 Platform V7.7</span>
       </div>
     </aside>
 
@@ -219,46 +219,158 @@
       </header>
 
       <section class="content">
-        <section id="module-user-home" class="module active">
-          <div class="hero">
+        <section id="module-user-home" class="module user-command-centre active">
+          <div class="user-command-hero">
             <div>
-              <span id="welcome-role" class="hero-tag">Normal User</span>
+              <span id="welcome-role" class="user-command-kicker">NORMAL USER • PERSONAL DELIVERY COMMAND CENTRE</span>
               <h2 id="welcome-title">Welcome to HOME31.</h2>
-              <p id="welcome-copy">Submit initiatives, complete readiness requirements and monitor your project portfolio.</p>
+              <p id="welcome-copy">Track progress, readiness, evidence, deadlines and actions across your initiative portfolio.</p>
             </div>
-            <button class="button gold" type="button" data-open-initiative>+ Create Initiative</button>
+
+            <div class="user-command-hero-actions">
+              <label class="user-year-selector">
+                <span>Tracking year</span>
+                <select id="user-year-select" aria-label="Select tracking year"></select>
+              </label>
+              <button class="user-command-button gold" type="button" data-open-initiative>+ Create Initiative</button>
+            </div>
           </div>
 
-          <div class="kpi-grid four">
-            <article><span>My initiatives</span><strong id="user-kpi-total">0</strong><small>Total records under your account</small></article>
-            <article><span>In progress</span><strong id="user-kpi-progress">0</strong><small>Currently executing</small></article>
-            <article><span>At risk</span><strong id="user-kpi-risk">0</strong><small>Require attention</small></article>
-            <article><span>Average progress</span><strong id="user-kpi-average">0%</strong><small>Across your portfolio</small></article>
+          <div class="user-kpi-grid">
+            <article class="user-kpi-card featured">
+              <span>My initiatives</span>
+              <strong id="user-kpi-total">0</strong>
+              <small id="user-kpi-total-note">Selected year portfolio</small>
+            </article>
+            <article class="user-kpi-card">
+              <span>In progress</span>
+              <strong id="user-kpi-progress">0</strong>
+              <small>Currently executing</small>
+            </article>
+            <article class="user-kpi-card danger">
+              <span>At risk</span>
+              <strong id="user-kpi-risk">0</strong>
+              <small>Need immediate attention</small>
+            </article>
+            <article class="user-kpi-card positive">
+              <span>Average progress</span>
+              <strong id="user-kpi-average">0%</strong>
+              <small>Portfolio delivery progress</small>
+            </article>
+            <article class="user-kpi-card">
+              <span>Average readiness</span>
+              <strong id="user-kpi-readiness">0%</strong>
+              <small>Governance and delivery readiness</small>
+            </article>
+            <article class="user-kpi-card">
+              <span>Evidence maturity</span>
+              <strong id="user-kpi-evidence">0%</strong>
+              <small>Supporting evidence completeness</small>
+            </article>
           </div>
 
-          <div class="dashboard-grid">
-            <article class="panel chart-panel">
-              <div class="panel-heading"><div><span class="section-label">My delivery</span><h3>Status distribution</h3></div></div>
-              <div class="chart-shell"><canvas id="user-status-chart"></canvas></div>
+          <div class="user-command-story-grid">
+            <article class="user-command-panel user-insight-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">INSIGHT 01</span>
+                  <h3>My Delivery Insight</h3>
+                </div>
+                <span id="user-health-badge" class="user-command-chip">Building view</span>
+              </div>
+              <p id="user-delivery-insight" class="user-command-narrative">Your portfolio insight will appear after data is loaded.</p>
+              <div id="user-insight-facts" class="user-command-facts"></div>
             </article>
 
-            <article class="panel">
-              <div class="panel-heading"><div><span class="section-label">Immediate action</span><h3>Readiness gaps</h3></div></div>
-              <div id="user-gap-list" class="future-list"></div>
+            <article class="user-command-panel user-action-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">ACTION 02</span>
+                  <h3>My Action Centre</h3>
+                </div>
+                <button class="user-command-text-button" data-jump="readiness" type="button">Open readiness →</button>
+              </div>
+
+              <div class="user-action-counts">
+                <button type="button" data-user-action="overdue"><span>Overdue</span><strong id="user-action-overdue">0</strong></button>
+                <button type="button" data-user-action="readiness"><span>Low readiness</span><strong id="user-action-readiness">0</strong></button>
+                <button type="button" data-user-action="evidence"><span>Evidence gaps</span><strong id="user-action-evidence">0</strong></button>
+                <button type="button" data-user-action="review"><span>HR / ICT review</span><strong id="user-action-review">0</strong></button>
+              </div>
+
+              <div id="user-priority-actions" class="user-priority-actions"></div>
+              <div id="user-gap-list" class="hidden" aria-hidden="true"></div>
             </article>
           </div>
 
-          <div class="panel">
-            <div class="panel-heading">
-              <div><span class="section-label">Recent portfolio</span><h3>My latest initiatives</h3></div>
-              <button class="button secondary small" data-jump="my-initiatives" type="button">Open all</button>
+          <div class="user-command-dashboard-grid">
+            <article class="user-command-panel user-chart-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">TRACKING 03</span>
+                  <h3>Progress, Readiness & Evidence</h3>
+                  <p>Compare delivery progress with governance readiness and evidence completeness.</p>
+                </div>
+              </div>
+              <div class="user-chart-shell large"><canvas id="user-progress-chart"></canvas></div>
+              <div class="user-chart-note">Click an initiative bar to open its full record.</div>
+            </article>
+
+            <article class="user-command-panel user-chart-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">STATUS 04</span>
+                  <h3>Portfolio Status</h3>
+                  <p>Click a status segment to filter My Initiatives.</p>
+                </div>
+              </div>
+              <div class="user-chart-shell"><canvas id="user-status-chart"></canvas></div>
+              <div id="user-status-summary" class="user-status-summary"></div>
+            </article>
+          </div>
+
+          <div class="user-command-dashboard-grid">
+            <article class="user-command-panel user-milestone-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">MILESTONES 05</span>
+                  <h3>Upcoming Deadlines</h3>
+                  <p>Target dates and immediate actions requiring attention.</p>
+                </div>
+              </div>
+              <div id="user-milestone-list" class="user-milestone-list"></div>
+            </article>
+
+            <article class="user-command-panel user-chart-panel">
+              <div class="user-command-panel-heading">
+                <div>
+                  <span class="user-command-section-code">ALIGNMENT 06</span>
+                  <h3>Strategic Pillar Mix</h3>
+                  <p>Your initiative distribution across HOME31 pillars.</p>
+                </div>
+              </div>
+              <div class="user-chart-shell"><canvas id="user-pillar-chart"></canvas></div>
+            </article>
+          </div>
+
+          <article class="user-command-panel user-tracker-panel">
+            <div class="user-command-panel-heading">
+              <div>
+                <span class="user-command-section-code">PORTFOLIO TRACKER 07</span>
+                <h3>My Initiative Tracker</h3>
+                <p>Track the latest position and open a record to update delivery information.</p>
+              </div>
+              <button class="user-command-button ghost" data-jump="my-initiatives" type="button">Open Full Portfolio</button>
             </div>
-            <div class="table-wrap">
-              <table id="user-recent-table">
-                <thead><tr><th>Initiative</th><th>Pillar</th><th>Status</th><th>Readiness</th><th>Progress</th></tr></thead>
-                <tbody></tbody>
-              </table>
-            </div>
+            <div id="user-tracker-grid" class="user-tracker-grid"></div>
+          </article>
+
+          <div class="user-command-assurance-strip">
+            <article><strong id="user-assurance-ownership">0%</strong><span>Ownership complete</span></article>
+            <article><strong id="user-assurance-target">0%</strong><span>Target dates recorded</span></article>
+            <article><strong id="user-assurance-hr">0</strong><span>HR reviews pending</span></article>
+            <article><strong id="user-assurance-ict">0</strong><span>ICT reviews pending</span></article>
+            <article><strong id="user-assurance-completed">0</strong><span>Completed initiatives</span></article>
           </div>
         </section>
 
@@ -1170,18 +1282,28 @@
     </main>
   </div>
 
-  <div id="initiative-modal" class="modal hidden">
-    <div class="modal-card comprehensive-modal">
+  <div id="initiative-modal" class="modal initiative-workspace-overlay hidden">
+    <div class="modal-card comprehensive-modal initiative-workspace-card">
       <div class="modal-heading">
         <div>
           <span class="section-label">Enterprise initiative record</span>
           <h2 id="initiative-modal-title">Create Initiative</h2>
           <p class="muted">HOME31 management form aligned with the AMP Excel fields, ownership controls, HR impact and evidence requirements.</p>
         </div>
-        <button id="close-initiative-modal" class="icon-button" type="button">×</button>
+        <div class="initiative-workspace-header-actions">
+          <span id="initiative-autosave-status" class="initiative-autosave-status">Not saved</span>
+          <button id="close-initiative-modal" class="icon-button" type="button" aria-label="Close initiative workspace">×</button>
+        </div>
       </div>
 
-      <div class="initiative-stepper seven-steps" aria-label="Initiative form progress">
+      <div class="initiative-workspace-layout">
+        <aside class="initiative-workspace-rail">
+          <div class="initiative-workspace-rail-heading">
+            <span>INITIATIVE WORKFLOW</span>
+            <strong id="initiative-workspace-step-title">Profile & Ownership</strong>
+          </div>
+
+          <div class="initiative-stepper seven-steps" aria-label="Initiative form progress">
         <button class="initiative-step active" type="button" data-form-step="1"><span>1</span>Profile</button>
         <button class="initiative-step" type="button" data-form-step="2"><span>2</span>Strategy & ICT</button>
         <button class="initiative-step" type="button" data-form-step="3"><span>3</span>Value & Plan</button>
@@ -1199,7 +1321,10 @@
         <div class="progress-track"><span id="initiative-form-completion-bar" style="width:0%"></span></div>
       </div>
 
-      <form id="initiative-form" class="initiative-comprehensive-form">
+        </aside>
+
+        <main class="initiative-workspace-main">
+          <form id="initiative-form" class="initiative-comprehensive-form">
         <input id="initiative-id" type="hidden">
 
         <section class="initiative-form-step active" data-step-panel="1">
@@ -1792,14 +1917,72 @@
           </label>
         </section>
 
-        <div class="modal-actions form-navigation">
-          <button id="initiative-previous-step" class="button light hidden" type="button">Previous</button>
-          <div class="navigation-spacer"></div>
-          <button id="cancel-initiative-modal" class="button light" type="button">Cancel</button>
-          <button id="initiative-next-step" class="button secondary" type="button">Next</button>
-          <button id="save-initiative-button" class="button gold hidden" type="submit">Save Initiative</button>
-        </div>
-      </form>
+            <div class="modal-actions form-navigation initiative-workspace-navigation">
+              <button id="initiative-previous-step" class="button light hidden" type="button">← Previous</button>
+              <button id="initiative-save-draft" class="button light" type="button">Save Draft</button>
+              <div class="navigation-spacer"></div>
+              <button id="cancel-initiative-modal" class="button light" type="button">Exit</button>
+              <button id="initiative-next-step" class="button secondary" type="button">Next →</button>
+              <button id="save-initiative-button" class="button gold hidden" type="submit">Save Initiative</button>
+            </div>
+          </form>
+        </main>
+
+        <aside class="initiative-workspace-summary">
+          <div id="initiative-draft-banner" class="initiative-draft-banner hidden">
+            <strong>Saved draft available</strong>
+            <span>A local draft from this device can be restored.</span>
+            <div>
+              <button id="initiative-restore-draft" type="button">Restore</button>
+              <button id="initiative-discard-draft" type="button">Discard</button>
+            </div>
+          </div>
+
+          <article class="workspace-summary-card highlighted">
+            <span>Overall completion</span>
+            <strong id="workspace-summary-completion">0%</strong>
+            <div class="progress-track"><span id="workspace-summary-completion-bar" style="width:0%"></span></div>
+          </article>
+
+          <article class="workspace-summary-card">
+            <span>Current step</span>
+            <strong id="workspace-current-step">1 of 7</strong>
+            <small id="workspace-current-step-name">Profile & Ownership</small>
+          </article>
+
+          <article class="workspace-summary-card">
+            <span>Mandatory fields missing</span>
+            <strong id="workspace-missing-count">0</strong>
+            <div id="workspace-missing-list" class="workspace-missing-list"></div>
+          </article>
+
+          <div class="workspace-summary-metrics">
+            <article><span>Progress</span><strong id="workspace-summary-progress">0%</strong></article>
+            <article><span>Readiness</span><strong id="workspace-summary-readiness">50%</strong></article>
+            <article><span>Evidence</span><strong id="workspace-summary-evidence">0%</strong></article>
+          </div>
+
+          <article class="workspace-summary-card compact">
+            <span>Target date</span>
+            <strong id="workspace-summary-target">Not recorded</strong>
+          </article>
+
+          <article class="workspace-summary-card compact">
+            <span>HR review</span>
+            <strong id="workspace-summary-hr">Not submitted</strong>
+          </article>
+
+          <article class="workspace-summary-card compact">
+            <span>ICT assessment</span>
+            <strong id="workspace-summary-ict">N/A</strong>
+          </article>
+
+          <div class="workspace-help">
+            <strong>Good submission practice</strong>
+            <span>Keep ownership clear, use measurable value targets, record dated actions and reference evidence that can be produced for review.</span>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 
