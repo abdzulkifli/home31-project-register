@@ -151,3 +151,25 @@ button{cursor:pointer}
   .review-card.full{grid-column:auto}
   .initiative-form-step{min-height:unset}
 }
+
+
+/* V7.2 Excel-aligned governance fields */
+.initiative-stepper.seven-steps{grid-template-columns:repeat(7,minmax(0,1fr))}
+.finance-grid input[type="number"]{font-variant-numeric:tabular-nums}
+.budget-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;
+  margin-top:14px;padding:14px;border:1px solid #e3d2a8;border-radius:16px;background:var(--gold-soft);
+}
+.budget-summary article{padding:10px;border-radius:12px;background:rgba(255,255,255,.72)}
+.budget-summary span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;font-weight:900;letter-spacing:.05em}
+.budget-summary strong{display:block;margin-top:4px;font-size:13px}
+.review-card.warning{border-color:#e6b0b4;background:var(--brand-soft)}
+.review-card.good{border-color:#9fd0bd;background:var(--green-soft)}
+@media(max-width:1180px){
+  .initiative-stepper.seven-steps{display:flex;overflow-x:auto}
+  .initiative-stepper.seven-steps .initiative-step{flex:0 0 125px}
+  .budget-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .budget-summary{grid-template-columns:1fr}
+}

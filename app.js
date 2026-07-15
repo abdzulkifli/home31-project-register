@@ -1,7 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
@@ -105,8 +105,14 @@ function bindEvents() {
     button.addEventListener("click", () => goToInitiativeStep(Number(button.dataset.formStep)))
   );
   $$("#initiative-form input, #initiative-form select, #initiative-form textarea").forEach(element => {
-    element.addEventListener("input", updateInitiativeFormMetrics);
-    element.addEventListener("change", updateInitiativeFormMetrics);
+    element.addEventListener("input", () => {
+      updateInitiativeFormMetrics();
+      renderBudgetSummary();
+    });
+    element.addEventListener("change", () => {
+      updateInitiativeFormMetrics();
+      renderBudgetSummary();
+    });
   });
   $$(".evidence-status").forEach(element =>
     element.addEventListener("change", updateEvidencePresentation)
@@ -608,9 +614,13 @@ function renderAdminPortfolio() {
         <td><strong>${escapeHtml(project.initiative_name)}</strong></td>
         <td>${escapeHtml(profile?.full_name || profile?.email || "Unknown")}</td>
         <td>${escapeHtml(project.department)}</td>
+        <td>${escapeHtml(project.initiative_category || "Not recorded")}</td>
+        <td>${escapeHtml(project.system_type || "Not recorded")}</td>
+        <td>${escapeHtml(project.priority_status || "Not assessed")}</td>
         <td>${escapeHtml(project.strategic_pillar)}</td>
         <td><span class="status-pill">${escapeHtml(project.status)}</span></td>
         <td><span class="risk-pill">${escapeHtml(project.risk_level)}</span></td>
+        <td>${formatRinggit(project.approved_budget)}</td>
         <td>${Number(project.readiness_score || 0)}%</td>
         <td>${progressBar(project.progress)}</td>
         <td><button class="text-button" data-admin-edit="${project.id}" type="button">Edit</button></td>
@@ -736,11 +746,18 @@ function renderAdminExceptions() {
 function openInitiativeModal(projectId = null) {
   $("#initiative-form").reset();
   $("#initiative-id").value = "";
+  $("#initiative-year").value = "2027";
+  $("#initiative-category").value = "New Initiative";
+  $("#initiative-priority").value = "High";
+  $("#initiative-priority-status").value = "Not Assessed";
   $("#initiative-status").value = "Planning";
   $("#initiative-risk").value = "Medium";
-  $("#initiative-priority").value = "High";
+  $("#initiative-system-type").value = "Non System";
+  $("#initiative-ict-classification").value = "N/A";
   $("#initiative-progress").value = "0";
   $("#initiative-readiness").value = "50";
+  $("#initiative-estimated-cost").value = "0";
+  $("#initiative-estimated-cost-post-challenge").value = "0";
   $("#initiative-hr").value = "Not required";
   $("#initiative-people-impact").value = "Medium";
   $("#initiative-training-required").value = "To be assessed";
@@ -758,17 +775,28 @@ function openInitiativeModal(projectId = null) {
   if (project) {
     $("#initiative-id").value = project.id;
     $("#initiative-created-by").value = project.created_by;
+    $("#initiative-source-reference").value = project.source_reference_no || "";
+    $("#initiative-year").value = project.implementation_year || 2027;
     $("#initiative-name").value = project.initiative_name || "";
+    $("#initiative-project-description").value = project.project_description || "";
     $("#initiative-department").value = project.department || "";
+    $("#initiative-category").value = project.initiative_category || "New Initiative";
     $("#initiative-priority").value = project.priority || "High";
+    $("#initiative-priority-status").value = project.priority_status || "Not Assessed";
     $("#initiative-executive-sponsor").value = project.executive_sponsor || "";
     $("#initiative-owner").value = project.accountable_owner || "";
     $("#initiative-delivery-lead").value = project.delivery_lead || "";
-    $("#initiative-pillar").value = project.strategic_pillar || pillars[0];
     $("#initiative-start-date").value = project.start_date || "";
     $("#initiative-target-date").value = project.target_date || "";
     $("#initiative-status").value = project.status || "Planning";
     $("#initiative-risk").value = project.risk_level || "Medium";
+
+    $("#initiative-pillar").value = project.strategic_pillar || pillars[0];
+    $("#initiative-strategic-thrust").value = project.strategic_thrust || "Operational Excellence";
+    $("#initiative-strategic-priority-area").value = project.strategic_priority_area || "Improving Productivity, Efficiency and Delivery of Service (PEDS)";
+    $("#initiative-system-type").value = project.system_type || "Non System";
+    $("#initiative-ict-classification").value = project.ict_classification || "N/A";
+    $("#initiative-ict-remarks").value = project.ict_remarks || "";
 
     $("#initiative-problem").value = project.problem_opportunity || "";
     $("#initiative-outcome").value = project.expected_outcome || "";
@@ -777,9 +805,19 @@ function openInitiativeModal(projectId = null) {
     $("#initiative-value-target").value = project.value_target || "";
     $("#initiative-value-frequency").value = project.value_frequency || "Quarterly";
     $("#initiative-value-owner").value = project.value_owner || "";
+    $("#initiative-cba-ratio").value = project.cba_ratio ?? "";
     $("#initiative-progress").value = project.progress || 0;
     $("#initiative-readiness").value = project.readiness_score || 0;
+    $("#initiative-action-plan").value = project.action_plan || "";
     $("#initiative-next-action").value = project.next_action || "";
+
+    $("#initiative-estimated-cost").value = project.estimated_cost ?? 0;
+    $("#initiative-estimated-cost-post-challenge").value = project.estimated_cost_post_challenge ?? 0;
+    $("#initiative-proposed-budget").value = project.proposed_budget_post_retreat ?? "";
+    $("#initiative-approved-budget").value = project.approved_budget ?? "";
+    $("#initiative-post-challenge-remarks").value = project.post_challenge_remarks || "";
+    $("#initiative-finance-remarks").value = project.finance_remarks || "";
+    $("#initiative-general-remarks").value = project.general_remarks || "";
 
     $("#initiative-hr").value = project.hr_collaboration_status || "Not required";
     $("#initiative-people-impact").value = project.people_impact_level || "Medium";
@@ -805,7 +843,9 @@ function openInitiativeModal(projectId = null) {
     $("#evidence-risk").value = project.evidence_risk_status || "Not available";
     $("#evidence-implementation").value = project.evidence_implementation_status || "Not available";
     $("#evidence-hr").value = project.evidence_hr_status || "Not available";
+    $("#evidence-ict").value = project.evidence_ict_status || "Not available";
     $("#evidence-stakeholder").value = project.evidence_stakeholder_status || "Not available";
+    $("#evidence-challenge").value = project.evidence_challenge_status || "Not available";
     $("#initiative-evidence-reference").value = project.evidence_reference || "";
     $("#initiative-evidence-notes").value = project.evidence_notes || "";
   }
@@ -813,6 +853,7 @@ function openInitiativeModal(projectId = null) {
   currentInitiativeFormStep = 1;
   renderInitiativeFormStep();
   updateEvidencePresentation();
+  renderBudgetSummary();
   updateInitiativeFormMetrics();
   $("#initiative-modal").classList.remove("hidden");
 }
@@ -822,17 +863,14 @@ function closeInitiativeModal() {
 }
 
 function goToInitiativeStep(step) {
-  if (step > currentInitiativeFormStep && !validateInitiativeStep(currentInitiativeFormStep)) {
-    return;
-  }
-
-  currentInitiativeFormStep = Math.max(1, Math.min(5, step));
+  if (step > currentInitiativeFormStep && !validateInitiativeStep(currentInitiativeFormStep)) return;
+  currentInitiativeFormStep = Math.max(1, Math.min(7, step));
   renderInitiativeFormStep();
 }
 
 function nextInitiativeStep() {
   if (!validateInitiativeStep(currentInitiativeFormStep)) return;
-  currentInitiativeFormStep = Math.min(5, currentInitiativeFormStep + 1);
+  currentInitiativeFormStep = Math.min(7, currentInitiativeFormStep + 1);
   renderInitiativeFormStep();
 }
 
@@ -853,10 +891,11 @@ function renderInitiativeFormStep() {
   });
 
   $("#initiative-previous-step").classList.toggle("hidden", currentInitiativeFormStep === 1);
-  $("#initiative-next-step").classList.toggle("hidden", currentInitiativeFormStep === 5);
-  $("#save-initiative-button").classList.toggle("hidden", currentInitiativeFormStep !== 5);
+  $("#initiative-next-step").classList.toggle("hidden", currentInitiativeFormStep === 7);
+  $("#save-initiative-button").classList.toggle("hidden", currentInitiativeFormStep !== 7);
 
-  if (currentInitiativeFormStep === 5) renderInitiativeReviewSummary();
+  if (currentInitiativeFormStep === 4) renderBudgetSummary();
+  if (currentInitiativeFormStep === 7) renderInitiativeReviewSummary();
 }
 
 function validateInitiativeStep(step) {
@@ -913,16 +952,25 @@ function updateEvidencePresentation() {
 
 function updateInitiativeFormMetrics() {
   const fields = [
+    "#initiative-year",
     "#initiative-name",
+    "#initiative-project-description",
     "#initiative-department",
+    "#initiative-category",
+    "#initiative-priority-status",
     "#initiative-executive-sponsor",
     "#initiative-owner",
     "#initiative-delivery-lead",
     "#initiative-pillar",
+    "#initiative-strategic-thrust",
+    "#initiative-strategic-priority-area",
+    "#initiative-system-type",
+    "#initiative-ict-classification",
     "#initiative-problem",
     "#initiative-outcome",
     "#initiative-value-measure",
     "#initiative-value-target",
+    "#initiative-action-plan",
     "#initiative-hr",
     "#evidence-problem",
     "#evidence-baseline"
@@ -937,25 +985,52 @@ function updateInitiativeFormMetrics() {
   $("#initiative-form-completion").textContent = `${score}%`;
   $("#initiative-form-completion-bar").style.width = `${score}%`;
 
-  if (currentInitiativeFormStep === 5) renderInitiativeReviewSummary();
+  if (currentInitiativeFormStep === 7) renderInitiativeReviewSummary();
+}
+
+function numberValue(selector) {
+  const raw = $(selector).value;
+  return raw === "" ? null : Number(raw);
+}
+
+function formatRinggit(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "Not recorded";
+  return `RM ${Number(value).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function renderBudgetSummary() {
+  const initial = numberValue("#initiative-estimated-cost") || 0;
+  const challenged = numberValue("#initiative-estimated-cost-post-challenge") || 0;
+  const proposed = numberValue("#initiative-proposed-budget");
+  const approved = numberValue("#initiative-approved-budget");
+  const challengeVariance = challenged - initial;
+  const approvalVariance = approved === null ? null : approved - challenged;
+
+  $("#initiative-budget-summary").innerHTML = `
+    <article><span>Initial estimate</span><strong>${formatRinggit(initial)}</strong></article>
+    <article><span>Post-challenge variance</span><strong>${formatRinggit(challengeVariance)}</strong></article>
+    <article><span>Proposed budget</span><strong>${formatRinggit(proposed)}</strong></article>
+    <article><span>Approved vs challenge</span><strong>${formatRinggit(approvalVariance)}</strong></article>
+  `;
 }
 
 function renderInitiativeReviewSummary() {
   const evidenceScore = calculateEvidenceScore();
-  const hrRequired = $("#initiative-hr").value;
-  const peopleImpact = $("#initiative-people-impact").value;
   const evidenceGaps = $$(".evidence-status")
     .filter(element => element.value === "Not available")
     .map(element => element.closest(".evidence-item").querySelector("span").textContent.trim());
 
+  const approved = numberValue("#initiative-approved-budget");
+  const challenged = numberValue("#initiative-estimated-cost-post-challenge");
+
   $("#initiative-review-summary").innerHTML = `
     <article class="review-card">
-      <span>Initiative</span>
-      <strong>${escapeHtml($("#initiative-name").value || "Not completed")}</strong>
+      <span>Initiative / category</span>
+      <strong>${escapeHtml($("#initiative-name").value || "Not completed")} · ${escapeHtml($("#initiative-category").value)}</strong>
     </article>
     <article class="review-card">
-      <span>Strategic alignment</span>
-      <strong>${escapeHtml($("#initiative-pillar").value || "Not selected")}</strong>
+      <span>Department / year / priority</span>
+      <strong>${escapeHtml($("#initiative-department").value || "Not completed")} · ${escapeHtml($("#initiative-year").value)} · ${escapeHtml($("#initiative-priority-status").value)}</strong>
     </article>
     <article class="review-card">
       <span>Executive sponsor</span>
@@ -966,20 +1041,32 @@ function renderInitiativeReviewSummary() {
       <strong>${escapeHtml($("#initiative-owner").value || "Not completed")} / ${escapeHtml($("#initiative-delivery-lead").value || "Not completed")}</strong>
     </article>
     <article class="review-card">
+      <span>HOME31 / strategic thrust</span>
+      <strong>${escapeHtml($("#initiative-pillar").value)} · ${escapeHtml($("#initiative-strategic-thrust").value)}</strong>
+    </article>
+    <article class="review-card">
+      <span>System / ICT classification</span>
+      <strong>${escapeHtml($("#initiative-system-type").value)} · ${escapeHtml($("#initiative-ict-classification").value)}</strong>
+    </article>
+    <article class="review-card">
       <span>Value measure and target</span>
       <strong>${escapeHtml($("#initiative-value-measure").value || "Not completed")} → ${escapeHtml($("#initiative-value-target").value || "Not completed")}</strong>
     </article>
     <article class="review-card">
-      <span>HR and people impact</span>
-      <strong>${escapeHtml(hrRequired)} · ${escapeHtml(peopleImpact)} impact</strong>
+      <span>CBA / approved budget</span>
+      <strong>${escapeHtml($("#initiative-cba-ratio").value || "Not recorded")} · ${formatRinggit(approved)}</strong>
     </article>
     <article class="review-card">
+      <span>HR and people impact</span>
+      <strong>${escapeHtml($("#initiative-hr").value)} · ${escapeHtml($("#initiative-people-impact").value)} impact · ${escapeHtml($("#initiative-hr-review-status").value)}</strong>
+    </article>
+    <article class="review-card ${evidenceScore >= 70 ? "good" : "warning"}">
       <span>Evidence completeness</span>
       <strong>${evidenceScore}%</strong>
     </article>
-    <article class="review-card">
-      <span>Readiness / Risk</span>
-      <strong>${Number($("#initiative-readiness").value || 0)}% · ${escapeHtml($("#initiative-risk").value)} risk</strong>
+    <article class="review-card full">
+      <span>Challenge-session decision</span>
+      <strong>${escapeHtml($("#initiative-post-challenge-remarks").value || "No remarks recorded")}</strong>
     </article>
     <article class="review-card full">
       <span>Outstanding evidence gaps</span>
@@ -995,7 +1082,7 @@ function renderInitiativeReviewSummary() {
 async function saveInitiative(event) {
   event.preventDefault();
 
-  for (let step = 1; step <= 5; step += 1) {
+  for (let step = 1; step <= 7; step += 1) {
     if (!validateInitiativeStep(step)) {
       currentInitiativeFormStep = step;
       renderInitiativeFormStep();
@@ -1010,17 +1097,28 @@ async function saveInitiative(event) {
       : currentUser.id;
 
   const record = {
+    source_reference_no: $("#initiative-source-reference").value.trim() || null,
+    implementation_year: Number($("#initiative-year").value),
     initiative_name: $("#initiative-name").value.trim(),
+    project_description: $("#initiative-project-description").value.trim(),
     department: $("#initiative-department").value.trim(),
+    initiative_category: $("#initiative-category").value,
     priority: $("#initiative-priority").value,
+    priority_status: $("#initiative-priority-status").value,
     executive_sponsor: $("#initiative-executive-sponsor").value.trim(),
     accountable_owner: $("#initiative-owner").value.trim(),
     delivery_lead: $("#initiative-delivery-lead").value.trim(),
-    strategic_pillar: $("#initiative-pillar").value,
     start_date: $("#initiative-start-date").value || null,
     target_date: $("#initiative-target-date").value || null,
     status: $("#initiative-status").value,
     risk_level: $("#initiative-risk").value,
+
+    strategic_pillar: $("#initiative-pillar").value,
+    strategic_thrust: $("#initiative-strategic-thrust").value,
+    strategic_priority_area: $("#initiative-strategic-priority-area").value,
+    system_type: $("#initiative-system-type").value,
+    ict_classification: $("#initiative-ict-classification").value,
+    ict_remarks: $("#initiative-ict-remarks").value.trim() || null,
 
     problem_opportunity: $("#initiative-problem").value.trim(),
     expected_outcome: $("#initiative-outcome").value.trim(),
@@ -1029,9 +1127,19 @@ async function saveInitiative(event) {
     value_target: $("#initiative-value-target").value.trim(),
     value_frequency: $("#initiative-value-frequency").value,
     value_owner: $("#initiative-value-owner").value.trim() || null,
+    cba_ratio: numberValue("#initiative-cba-ratio"),
     progress: Number($("#initiative-progress").value),
     readiness_score: Number($("#initiative-readiness").value),
+    action_plan: $("#initiative-action-plan").value.trim(),
     next_action: $("#initiative-next-action").value.trim() || null,
+
+    estimated_cost: numberValue("#initiative-estimated-cost") || 0,
+    estimated_cost_post_challenge: numberValue("#initiative-estimated-cost-post-challenge") || 0,
+    proposed_budget_post_retreat: numberValue("#initiative-proposed-budget"),
+    approved_budget: numberValue("#initiative-approved-budget"),
+    post_challenge_remarks: $("#initiative-post-challenge-remarks").value.trim() || null,
+    finance_remarks: $("#initiative-finance-remarks").value.trim() || null,
+    general_remarks: $("#initiative-general-remarks").value.trim() || null,
 
     hr_collaboration_status: $("#initiative-hr").value,
     people_impact_level: $("#initiative-people-impact").value,
@@ -1057,7 +1165,9 @@ async function saveInitiative(event) {
     evidence_risk_status: $("#evidence-risk").value,
     evidence_implementation_status: $("#evidence-implementation").value,
     evidence_hr_status: $("#evidence-hr").value,
+    evidence_ict_status: $("#evidence-ict").value,
     evidence_stakeholder_status: $("#evidence-stakeholder").value,
+    evidence_challenge_status: $("#evidence-challenge").value,
     evidence_reference: $("#initiative-evidence-reference").value.trim() || null,
     evidence_notes: $("#initiative-evidence-notes").value.trim() || null,
     evidence_completeness: calculateEvidenceScore(),
@@ -1066,17 +1176,14 @@ async function saveInitiative(event) {
     updated_at: new Date().toISOString()
   };
 
-  let response;
-  if (id) {
-    response = await supabase.from("initiatives").update(record).eq("id", id);
-  } else {
-    response = await supabase.from("initiatives").insert(record);
-  }
+  const response = id
+    ? await supabase.from("initiatives").update(record).eq("id", id)
+    : await supabase.from("initiatives").insert(record);
 
   if (response.error) return showToast(response.error.message, true);
 
   closeInitiativeModal();
-  showToast(id ? "Comprehensive initiative record updated." : "Comprehensive initiative record created.");
+  showToast(id ? "Excel-aligned comprehensive initiative updated." : "Excel-aligned comprehensive initiative created.");
 
   await loadUserProjects();
   if (currentProfile.role === "super_admin") await loadAdminData();
@@ -1134,6 +1241,7 @@ function initiativeCard(project) {
         </div>
         <span class="status-pill">${escapeHtml(project.status)}</span>
       </div>
+      <span>${escapeHtml(project.initiative_category || "Unclassified")} · ${escapeHtml(project.system_type || "System not recorded")} · ${escapeHtml(project.priority_status || "Not assessed")}</span>
       <span>Sponsor: ${escapeHtml(project.executive_sponsor || "Not recorded")} · Delivery lead: ${escapeHtml(project.delivery_lead || "Not recorded")}</span>
       <span>Risk: ${escapeHtml(project.risk_level)} · Readiness: ${Number(project.readiness_score || 0)}% · HR: ${escapeHtml(project.hr_collaboration_status || "Not required")} · Evidence: ${Number(project.evidence_completeness || 0)}%</span>
       <div class="progress-track"><span style="width:${Number(project.progress || 0)}%"></span></div>
