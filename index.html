@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Simplified HOME31 initiative submission and portfolio monitoring workspace.">
-  <title>HOME31 Enterprise Initiative Register V4.2 Temporary Provisioning</title>
+  <title>HOME31 Enterprise Command Centre V5</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -530,6 +530,16 @@
           <button id="admin-jump-users" class="button secondary" type="button">Add Normal User</button>
           <button id="admin-jump-analytics" class="button light" type="button">View Analytics</button>
         </div>
+
+        <nav class="admin-tabs" aria-label="Super admin workspaces">
+          <button class="admin-tab active" type="button" data-admin-tab="overview"><span>⌂</span> Executive Overview</button>
+          <button class="admin-tab" type="button" data-admin-tab="analytics"><span>◫</span> Portfolio Analytics</button>
+          <button class="admin-tab" type="button" data-admin-tab="initiatives"><span>▤</span> Initiative Management</button>
+          <button class="admin-tab" type="button" data-admin-tab="users"><span>♙</span> User Administration</button>
+          <button class="admin-tab" type="button" data-admin-tab="hr"><span>◎</span> HR Collaboration</button>
+          <button class="admin-tab" type="button" data-admin-tab="exceptions"><span>!</span> Risks & Exceptions</button>
+          <button class="admin-tab" type="button" data-admin-tab="settings"><span>⚙</span> System & Future</button>
+        </nav>
         <div class="admin-principles">
           <article><strong>Portfolio oversight</strong><span>All initiatives across every registered user and department.</span></article>
           <article><strong>Interactive analytics</strong><span>Click chart segments to filter the underlying project portfolio.</span></article>
@@ -537,7 +547,7 @@
         </div>
       </section>
 
-      <section id="admin-overview" class="panel">
+      <section id="admin-overview" class="panel admin-tab-panel active" data-admin-panel="overview">
         <div class="panel-heading">
           <div>
             <span class="section-label">Enterprise overview</span>
@@ -555,9 +565,32 @@
           <article><span>HR collaboration</span><strong id="admin-kpi-hr">0</strong></article>
           <article><span>Completed</span><strong id="admin-kpi-completed">0</strong></article>
         </div>
+
+        <div class="executive-decision-grid">
+          <article>
+            <span>Immediate management attention</span>
+            <strong id="admin-exec-attention">0 initiatives</strong>
+            <small>High risk, extreme risk, overdue or low readiness.</small>
+          </article>
+          <article>
+            <span>Portfolio delivery health</span>
+            <strong id="admin-exec-health">No data</strong>
+            <small>Calculated from readiness, progress and exception exposure.</small>
+          </article>
+          <article>
+            <span>HR-dependent initiatives</span>
+            <strong id="admin-exec-hr">0 initiatives</strong>
+            <small>Projects requiring people, workforce or change collaboration.</small>
+          </article>
+          <article>
+            <span>Next governance focus</span>
+            <strong id="admin-exec-focus">Build portfolio data</strong>
+            <small>Suggested from the most material current exception.</small>
+          </article>
+        </div>
       </section>
 
-      <section id="admin-analytics" class="panel">
+      <section id="admin-analytics" class="panel admin-tab-panel" data-admin-panel="analytics">
         <div class="panel-heading">
           <div>
             <span class="section-label">Interactive portfolio intelligence</span>
@@ -594,7 +627,7 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section id="admin-initiatives" class="panel admin-tab-panel" data-admin-panel="initiatives">
         <div class="panel-heading">
           <div>
             <span class="section-label">Portfolio administration</span>
@@ -640,7 +673,7 @@
         <div id="admin-project-list" class="admin-project-list"></div>
       </section>
 
-      <section class="panel">
+      <section id="admin-user-create" class="panel admin-tab-panel" data-admin-panel="users">
         <div class="panel-heading">
           <div>
             <span class="section-label">Temporary user administration</span>
@@ -695,7 +728,7 @@
         </form>
       </section>
 
-      <section class="panel">
+      <section id="admin-user-directory-panel" class="panel admin-tab-panel" data-admin-panel="users">
         <div class="panel-heading">
           <div>
             <span class="section-label">Access administration</span>
@@ -709,6 +742,116 @@
           <strong>Important:</strong> Super-admin access provides visibility and control over all application project records. Do not promote ordinary initiative owners.
         </div>
         <div id="admin-user-list" class="admin-user-list"></div>
+      </section>
+
+      <section id="admin-hr-workspace" class="panel admin-tab-panel" data-admin-panel="hr">
+        <div class="panel-heading">
+          <div>
+            <span class="section-label">People and change governance</span>
+            <h2>HR Collaboration Workspace</h2>
+            <p>Focus on initiatives requiring workforce planning, capability development, communication, organisation design or employee adoption support.</p>
+          </div>
+          <span class="badge blue-badge">Cross-functional view</span>
+        </div>
+
+        <div class="summary-grid">
+          <article><span>HR collaboration required</span><strong id="admin-hr-required">0</strong></article>
+          <article><span>HR engagement incomplete</span><strong id="admin-hr-incomplete">0</strong></article>
+          <article><span>Training plans missing</span><strong id="admin-hr-training-gap">0</strong></article>
+          <article><span>Change plans missing</span><strong id="admin-hr-change-gap">0</strong></article>
+        </div>
+
+        <div class="future-split">
+          <div>
+            <h3>HR-dependent initiatives</h3>
+            <div id="admin-hr-project-list" class="future-list"></div>
+          </div>
+          <aside class="future-roadmap">
+            <h3>Future HR enhancements</h3>
+            <ul>
+              <li>HR review workflow and formal endorsement.</li>
+              <li>Training-demand aggregation by competency.</li>
+              <li>Workforce-capacity and redeployment planning.</li>
+              <li>Change saturation and employee-impact heatmap.</li>
+              <li>Integration with HRMS and learning records.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="admin-exceptions-workspace" class="panel admin-tab-panel" data-admin-panel="exceptions">
+        <div class="panel-heading">
+          <div>
+            <span class="section-label">Management by exception</span>
+            <h2>Risks, Overdue Actions & Low Readiness</h2>
+            <p>A consolidated queue for initiatives requiring intervention, escalation or conditional approval.</p>
+          </div>
+          <span class="badge burgundy">Attention required</span>
+        </div>
+
+        <div class="exception-lanes">
+          <article>
+            <div class="lane-heading"><span>High / Extreme Risk</span><strong id="exception-risk-count">0</strong></div>
+            <div id="exception-risk-list" class="future-list compact"></div>
+          </article>
+          <article>
+            <div class="lane-heading"><span>Below 70% Readiness</span><strong id="exception-readiness-count">0</strong></div>
+            <div id="exception-readiness-list" class="future-list compact"></div>
+          </article>
+          <article>
+            <div class="lane-heading"><span>Overdue Active Projects</span><strong id="exception-overdue-count">0</strong></div>
+            <div id="exception-overdue-list" class="future-list compact"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="admin-settings-workspace" class="panel admin-tab-panel" data-admin-panel="settings">
+        <div class="panel-heading">
+          <div>
+            <span class="section-label">Architecture and roadmap</span>
+            <h2>System Settings & Future Modules</h2>
+            <p>A structured place for future administration controls without crowding the operational dashboards.</p>
+          </div>
+          <span class="badge gold-badge">Future ready</span>
+        </div>
+
+        <div class="settings-grid">
+          <article>
+            <h3>Access & Security</h3>
+            <p>Future: Entra ID SSO, MFA, approved-domain restrictions, session controls and delegated administration.</p>
+            <span class="future-status">Planned</span>
+          </article>
+          <article>
+            <h3>Workflow & Approvals</h3>
+            <p>Future: configurable stage gates, reviewer assignment, approval conditions, reminders and escalation paths.</p>
+            <span class="future-status">Planned</span>
+          </article>
+          <article>
+            <h3>Notifications</h3>
+            <p>Future: email or Teams notifications for overdue actions, gate decisions, risk escalation and HR review.</p>
+            <span class="future-status">Planned</span>
+          </article>
+          <article>
+            <h3>Document Repository</h3>
+            <p>Future: evidence attachments, version control, formal papers and links to approved organisational repositories.</p>
+            <span class="future-status">Planned</span>
+          </article>
+          <article>
+            <h3>Advanced Analytics</h3>
+            <p>Future: trend analysis, scenario simulation, forecast completion, benefits tracking and portfolio optimisation.</p>
+            <span class="future-status">Planned</span>
+          </article>
+          <article>
+            <h3>Audit & Data Governance</h3>
+            <p>Future: immutable audit trail, data-retention rules, quality checks, data ownership and compliance reporting.</p>
+            <span class="future-status">Planned</span>
+          </article>
+        </div>
+
+        <div class="notice blue">
+          <strong>Current prototype boundary:</strong>
+          Settings shown here are roadmap placeholders. Production controls require approved organisational architecture, security, privacy and governance decisions.
+        </div>
       </section>
     </section>
 

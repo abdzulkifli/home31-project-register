@@ -1,8 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 
 // Resolves automatically to the folder where this page is currently hosted.
 // This preserves a GitHub Pages repository path instead of redirecting only
@@ -175,9 +175,12 @@ function registerEvents() {
   $("#admin-generate-password").addEventListener("click", generateTemporaryPassword);
   $("#admin-copy-credentials").addEventListener("click", copyLastCreatedCredentials);
   $("#admin-key-in-initiative").addEventListener("click", startNewInitiative);
-  $("#admin-jump-users").addEventListener("click", () => $("#admin-create-user-form").scrollIntoView({ behavior: "smooth", block: "center" }));
-  $("#admin-jump-analytics").addEventListener("click", () => $("#admin-analytics").scrollIntoView({ behavior: "smooth", block: "start" }));
+  $("#admin-jump-users").addEventListener("click", () => showAdminTab("users"));
+  $("#admin-jump-analytics").addEventListener("click", () => showAdminTab("analytics"));
   $("#admin-clear-chart-filters").addEventListener("click", clearAdminChartFilters);
+  $$(".admin-tab").forEach(button => {
+    button.addEventListener("click", () => showAdminTab(button.dataset.adminTab));
+  });
   ["#admin-search", "#admin-status-filter", "#admin-pillar-filter", "#admin-risk-filter"]
     .forEach(selector => $(selector).addEventListener("input", renderAdminProjects));
 
@@ -368,6 +371,7 @@ async function renderSession() {
     await loadAdminData();
     populateAdminRecordOwners();
     await loadProjects();
+    showAdminTab("overview");
     $("#admin-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     await loadProjects();
@@ -876,6 +880,125 @@ function loadSample() {
 }
 
 
+
+function showAdminTab(tabName) {
+  if (currentProfile?.role !== "super_admin") return;
+
+  $$(".admin-tab").forEach(button => {
+    button.classList.toggle("active", button.dataset.adminTab === tabName);
+  });
+
+  $$(".admin-tab-panel").forEach(panel => {
+    panel.classList.toggle("active", panel.dataset.adminPanel === tabName);
+  });
+
+  if (tabName === "analytics") {
+    window.setTimeout(renderAdminCharts, 80);
+  }
+
+  const firstPanel = document.querySelector(
+    `.admin-tab-panel[data-admin-panel="${tabName}"]`
+  );
+  firstPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function futureItem(project, detail) {
+  return `
+    <article class="future-item">
+      <strong>${escapeHtml(project.initiative_name)}</strong>
+      <span>${escapeHtml(project.department || "No department")} · ${escapeHtml(detail)}</span>
+    </article>
+  `;
+}
+
+function renderExecutiveOverview() {
+  const today = new Date().toISOString().slice(0, 10);
+  const exceptions = adminProjects.filter(project =>
+    ["High", "Extreme"].includes(project.risk_level) ||
+    Number(project.readiness_score || 0) < 70 ||
+    (project.target_date && project.target_date < today && project.status !== "Completed")
+  );
+  const hrProjects = adminProjects.filter(project =>
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
+  );
+  const averageReadiness = adminProjects.length
+    ? Math.round(adminProjects.reduce((sum, p) => sum + Number(p.readiness_score || 0), 0) / adminProjects.length)
+    : 0;
+  const highRisk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
+  const completion = adminProjects.length
+    ? Math.round(adminProjects.filter(project => project.status === "Completed").length / adminProjects.length * 100)
+    : 0;
+
+  let health = "No data";
+  if (adminProjects.length) {
+    if (highRisk === 0 && averageReadiness >= 80 && completion >= 20) health = "Healthy";
+    else if (highRisk <= 2 && averageReadiness >= 65) health = "Watch";
+    else health = "Intervention required";
+  }
+
+  let focus = "Build portfolio data";
+  if (highRisk) focus = "Resolve high-risk exposure";
+  else if (exceptions.some(p => p.target_date && p.target_date < today)) focus = "Recover overdue delivery";
+  else if (adminProjects.some(p => Number(p.readiness_score || 0) < 70)) focus = "Close readiness gaps";
+  else if (hrProjects.length) focus = "Strengthen HR collaboration";
+  else if (adminProjects.length) focus = "Track benefits and completion";
+
+  $("#admin-exec-attention").textContent = `${exceptions.length} initiatives`;
+  $("#admin-exec-health").textContent = health;
+  $("#admin-exec-hr").textContent = `${hrProjects.length} initiatives`;
+  $("#admin-exec-focus").textContent = focus;
+}
+
+function renderHrWorkspace() {
+  const hrProjects = adminProjects.filter(project =>
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
+  );
+  const incomplete = hrProjects.filter(project =>
+    !project.hr_engaged_early || !project.hr_people_impact_assessed
+  );
+  const trainingGap = hrProjects.filter(project => !project.hr_skills_training_plan);
+  const changeGap = hrProjects.filter(project => !project.hr_change_comms_plan);
+
+  $("#admin-hr-required").textContent = hrProjects.length;
+  $("#admin-hr-incomplete").textContent = incomplete.length;
+  $("#admin-hr-training-gap").textContent = trainingGap.length;
+  $("#admin-hr-change-gap").textContent = changeGap.length;
+
+  $("#admin-hr-project-list").innerHTML = hrProjects.length
+    ? hrProjects.map(project => futureItem(
+        project,
+        `${project.hr_collaboration_status}; HR stage: ${project.hr_engagement_stage || "Not recorded"}`
+      )).join("")
+    : '<div class="notice blue">No HR-dependent initiatives currently recorded.</div>';
+}
+
+function renderExceptionWorkspace() {
+  const today = new Date().toISOString().slice(0, 10);
+  const risk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level));
+  const readiness = adminProjects.filter(project => Number(project.readiness_score || 0) < 70);
+  const overdue = adminProjects.filter(project =>
+    project.target_date &&
+    project.target_date < today &&
+    project.status !== "Completed"
+  );
+
+  $("#exception-risk-count").textContent = risk.length;
+  $("#exception-readiness-count").textContent = readiness.length;
+  $("#exception-overdue-count").textContent = overdue.length;
+
+  $("#exception-risk-list").innerHTML = risk.length
+    ? risk.map(project => futureItem(project, `${project.risk_level} risk · ${project.status}`)).join("")
+    : '<div class="notice blue">No high or extreme risks.</div>';
+
+  $("#exception-readiness-list").innerHTML = readiness.length
+    ? readiness.map(project => futureItem(project, `${Number(project.readiness_score || 0)}% readiness`)).join("")
+    : '<div class="notice blue">No initiatives below 70% readiness.</div>';
+
+  $("#exception-overdue-list").innerHTML = overdue.length
+    ? overdue.map(project => futureItem(project, `Target ${project.target_date} · ${project.progress || 0}% complete`)).join("")
+    : '<div class="notice blue">No overdue active initiatives.</div>';
+}
+
 async function loadAdminData() {
   if (currentProfile?.role !== "super_admin") return;
 
@@ -895,9 +1018,12 @@ async function loadAdminData() {
   adminProfiles = profileResult.data ?? [];
   hideAdminProjectMessage();
   renderAdminKpis();
+  renderExecutiveOverview();
   renderAdminCharts();
   renderAdminProjects();
   renderAdminUsers();
+  renderHrWorkspace();
+  renderExceptionWorkspace();
   populateAdminRecordOwners();
 }
 

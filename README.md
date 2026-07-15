@@ -1,4 +1,4 @@
-# HOME31 Enterprise Initiative Register V4.2 — Temporary No-Edge Provisioning — Version 3
+# HOME31 Enterprise Command Centre V5 — Version 3
 
 This GitHub Pages + Supabase prototype provides two different dashboards.
 
@@ -237,3 +237,24 @@ prove that the signup request came from the visible admin form. Before productio
 - restore protected server-side provisioning through an Edge Function or other
   approved backend;
 - add password-change enforcement and audit logging.
+
+
+## Version 5: separate tabbed super-admin command centre
+
+The super-admin dashboard is no longer one long page. It is organised into seven
+dedicated workspaces:
+
+1. Executive Overview
+2. Portfolio Analytics
+3. Initiative Management
+4. User Administration
+5. HR Collaboration
+6. Risks & Exceptions
+7. System & Future
+
+The normal-user dashboard remains separate and focused on project submission and
+personal portfolio management.
+
+Future modules are represented as roadmap panels so additional workflow,
+notification, document, SSO, audit, data-governance and advanced-analytics
+features can be added without redesigning the whole admin experience.
