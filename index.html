@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="HOME31 Enterprise Management Platform V7">
-  <title>HOME31 Enterprise Management Platform V7.2</title>
+  <title>HOME31 Enterprise Management Platform V7.3</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -243,25 +243,255 @@
           </div>
         </section>
 
-        <section id="module-admin-overview" class="module">
-          <div class="module-heading">
-            <div><span class="section-label">Enterprise command centre</span><h2>Executive Overview</h2><p>Organisation-wide portfolio, readiness, risk and HR collaboration.</p></div>
+        <section id="module-admin-overview" class="module executive-command-centre">
+          <div class="executive-hero">
+            <div>
+              <span class="executive-kicker">HOME31 • ENTERPRISE COMMAND CENTRE</span>
+              <h2>Executive Portfolio Overview</h2>
+              <p>One management view of strategic readiness, delivery load, cost challenge, priority, risk, HR impact, ICT dependency and evidence certainty.</p>
+            </div>
+            <div class="executive-hero-actions">
+              <button id="admin-overview-refresh" class="executive-button ghost" type="button">↻ Refresh</button>
+              <button class="executive-button gold" data-jump="admin-portfolio" type="button">Open Enterprise Portfolio</button>
+            </div>
           </div>
 
-          <div class="kpi-grid six">
-            <article><span>Total initiatives</span><strong id="admin-kpi-total">0</strong><small>Enterprise portfolio</small></article>
-            <article><span>Portfolio health</span><strong id="admin-kpi-health">0%</strong><small>Average readiness</small></article>
-            <article><span>At risk</span><strong id="admin-kpi-risk">0</strong><small>High risk or at-risk status</small></article>
-            <article><span>HR dependent</span><strong id="admin-kpi-hr">0</strong><small>People collaboration</small></article>
-            <article><span>Overdue</span><strong id="admin-kpi-overdue">0</strong><small>Past target date</small></article>
-            <article><span>Users</span><strong id="admin-kpi-users">0</strong><small>Registered profiles</small></article>
+          <div class="executive-kpi-grid">
+            <article class="executive-kpi-card featured">
+              <div class="kpi-icon">▦</div>
+              <span>Portfolio items</span>
+              <strong id="admin-kpi-total">0</strong>
+              <small id="admin-kpi-total-note">Enterprise initiatives</small>
+            </article>
+            <article class="executive-kpi-card">
+              <div class="kpi-icon">✓</div>
+              <span>Strategic readiness</span>
+              <strong id="admin-kpi-health">0%</strong>
+              <small id="admin-kpi-health-note">Completeness across seven checks</small>
+            </article>
+            <article class="executive-kpi-card">
+              <div class="kpi-icon">RM</div>
+              <span>Effective post-challenge cost</span>
+              <strong id="admin-kpi-effective-cost">RM0</strong>
+              <small id="admin-kpi-effective-note">Confirmed numeric values</small>
+            </article>
+            <article class="executive-kpi-card positive">
+              <div class="kpi-icon">↓</div>
+              <span>Challenge reduction</span>
+              <strong id="admin-kpi-reduction">RM0</strong>
+              <small id="admin-kpi-reduction-note">Versus original estimate</small>
+            </article>
+            <article class="executive-kpi-card priority">
+              <div class="kpi-icon">★</div>
+              <span>Strategic priority</span>
+              <strong id="admin-kpi-priority">0</strong>
+              <small>Corporate / strategic priority records</small>
+            </article>
+            <article class="executive-kpi-card danger">
+              <div class="kpi-icon">!</div>
+              <span>At risk</span>
+              <strong id="admin-kpi-risk">0</strong>
+              <small>High, extreme or at-risk status</small>
+            </article>
+            <article class="executive-kpi-card">
+              <div class="kpi-icon">HR</div>
+              <span>HR dependent</span>
+              <strong id="admin-kpi-hr">0</strong>
+              <small>People or change collaboration</small>
+            </article>
+            <article class="executive-kpi-card">
+              <div class="kpi-icon">ICT</div>
+              <span>ICT dependent</span>
+              <strong id="admin-kpi-ict">0</strong>
+              <small>System or ICT review required</small>
+            </article>
           </div>
 
-          <div class="dashboard-grid">
-            <article class="panel chart-panel"><div class="panel-heading"><h3>Initiatives by status</h3></div><div class="chart-shell"><canvas id="admin-status-chart"></canvas></div></article>
-            <article class="panel chart-panel"><div class="panel-heading"><h3>Strategic pillar coverage</h3></div><div class="chart-shell"><canvas id="admin-pillar-chart"></canvas></div></article>
-            <article class="panel chart-panel"><div class="panel-heading"><h3>Risk distribution</h3></div><div class="chart-shell"><canvas id="admin-risk-chart"></canvas></div></article>
-            <article class="panel chart-panel"><div class="panel-heading"><h3>Department readiness</h3></div><div class="chart-shell"><canvas id="admin-department-chart"></canvas></div></article>
+          <div class="executive-story-grid">
+            <article class="executive-panel insight-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">INSIGHT 01</span>
+                  <h3>Executive Insight</h3>
+                </div>
+                <span id="admin-portfolio-health-badge" class="executive-status-chip">Building data</span>
+              </div>
+              <p id="admin-executive-insight" class="executive-insight-copy">Portfolio insight will appear after data is loaded.</p>
+              <div id="admin-insight-facts" class="executive-fact-strip"></div>
+            </article>
+
+            <article class="executive-panel attention-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">ATTENTION 02</span>
+                  <h3>Management Attention</h3>
+                </div>
+                <button class="executive-text-button" data-jump="admin-exceptions" type="button">Open exceptions →</button>
+              </div>
+              <div class="traffic-light-grid">
+                <div class="traffic-card critical">
+                  <span>Critical</span>
+                  <strong id="admin-attention-critical">0</strong>
+                  <small>Immediate management intervention</small>
+                </div>
+                <div class="traffic-card watch">
+                  <span>Watchlist</span>
+                  <strong id="admin-attention-watch">0</strong>
+                  <small>Clarification or review required</small>
+                </div>
+                <div class="traffic-card stable">
+                  <span>Stable</span>
+                  <strong id="admin-attention-stable">0</strong>
+                  <small>Ready or progressing within guardrails</small>
+                </div>
+              </div>
+              <div id="admin-attention-summary" class="attention-summary"></div>
+            </article>
+          </div>
+
+          <div class="executive-dashboard-grid">
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">BUDGET 01</span>
+                  <h3>Budget Journey & Challenge Impact</h3>
+                  <p>Original estimate, confirmed post-challenge position and downstream budget fields.</p>
+                </div>
+              </div>
+              <div class="executive-chart-shell large"><canvas id="admin-budget-journey-chart"></canvas></div>
+              <div id="admin-budget-metrics" class="executive-metric-row"></div>
+              <div id="admin-budget-footnote" class="executive-chart-note"></div>
+            </article>
+
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code teal">READINESS 02</span>
+                  <h3>Strategic Register Readiness</h3>
+                  <p>Derived from description, dated plan, cost certainty, priority, ICT classification, pillar and HOME31 fit.</p>
+                </div>
+              </div>
+              <div class="readiness-composite">
+                <div class="readiness-gauge-wrap">
+                  <canvas id="admin-readiness-gauge-chart"></canvas>
+                  <div class="readiness-gauge-label">
+                    <strong id="admin-readiness-gauge-value">0%</strong>
+                    <span>Strategic readiness</span>
+                  </div>
+                </div>
+                <div id="admin-department-readiness-bars" class="department-readiness-bars"></div>
+              </div>
+              <div id="admin-readiness-footnote" class="executive-chart-note"></div>
+            </article>
+          </div>
+
+          <div class="executive-dashboard-grid">
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">DELIVERY 03</span>
+                  <h3>Quarterly Delivery Load</h3>
+                  <p>Initiatives active in each quarter using action-plan dates, start date and target completion date.</p>
+                </div>
+              </div>
+              <div class="executive-chart-shell"><canvas id="admin-delivery-load-chart"></canvas></div>
+              <div id="admin-delivery-footnote" class="executive-chart-note"></div>
+            </article>
+
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">DECISION 04</span>
+                  <h3>Cost–Benefit–Complexity Matrix</h3>
+                  <p>Effective cost versus CBA ratio. Bubble size reflects delivery complexity; colour represents priority status.</p>
+                </div>
+              </div>
+              <div class="executive-chart-shell"><canvas id="admin-cost-benefit-chart"></canvas></div>
+              <div id="admin-matrix-footnote" class="executive-chart-note"></div>
+            </article>
+          </div>
+
+          <article class="executive-panel comparison-panel">
+            <div class="executive-panel-heading">
+              <div>
+                <span class="executive-section-code">COMPARISON SCOPE</span>
+                <h3>AMP2026 vs AMP2027 Management Comparison</h3>
+                <p>AMP2026 baseline is configurable in <code>app.js</code>; AMP2027 is calculated from current Supabase records.</p>
+              </div>
+              <span class="executive-status-chip neutral">Full portfolio</span>
+            </div>
+            <div id="admin-comparison-grid" class="comparison-grid"></div>
+            <div id="admin-comparison-notes" class="comparison-notes"></div>
+          </article>
+
+          <article class="executive-panel chart-panel full-width-panel">
+            <div class="executive-panel-heading">
+              <div>
+                <span class="executive-section-code">COMPARISON 03</span>
+                <h3>Department Cost Concentration</h3>
+                <p>Top departments by confirmed post-challenge cost, compared with the configurable AMP2026 baseline where available.</p>
+              </div>
+            </div>
+            <div class="executive-chart-shell wide"><canvas id="admin-department-cost-chart"></canvas></div>
+            <div id="admin-cost-concentration-footnote" class="executive-chart-note"></div>
+          </article>
+
+          <div class="executive-dashboard-grid">
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code">PILLAR 01</span>
+                  <h3>Initiatives by Strategic Pillar</h3>
+                </div>
+                <div class="chart-toggle" aria-label="Pillar chart value">
+                  <button class="active" type="button" data-pillar-metric="count">Count</button>
+                  <button type="button" data-pillar-metric="cost">Cost RM</button>
+                </div>
+              </div>
+              <div class="executive-chart-shell"><canvas id="admin-pillar-chart"></canvas></div>
+            </article>
+
+            <article class="executive-panel chart-panel">
+              <div class="executive-panel-heading">
+                <div>
+                  <span class="executive-section-code teal">FIT 02</span>
+                  <h3>HOME31 Fit Classification</h3>
+                  <p>Derived from initiative category, priority status, system dependency and completeness.</p>
+                </div>
+              </div>
+              <div class="executive-chart-shell"><canvas id="admin-home31-fit-chart"></canvas></div>
+            </article>
+          </div>
+
+          <div class="executive-decision-grid">
+            <article class="executive-panel decision-panel">
+              <div class="executive-panel-heading">
+                <div><span class="executive-section-code">DECISIONS</span><h3>Executive Decisions Required</h3></div>
+              </div>
+              <div id="admin-decision-queue" class="executive-list"></div>
+            </article>
+
+            <article class="executive-panel decision-panel">
+              <div class="executive-panel-heading">
+                <div><span class="executive-section-code">TOP COST</span><h3>Highest-Cost Initiatives</h3></div>
+              </div>
+              <div id="admin-top-cost-list" class="executive-list"></div>
+            </article>
+
+            <article class="executive-panel decision-panel">
+              <div class="executive-panel-heading">
+                <div><span class="executive-section-code">TOP RISK</span><h3>Highest-Risk Initiatives</h3></div>
+              </div>
+              <div id="admin-top-risk-list" class="executive-list"></div>
+            </article>
+          </div>
+
+          <div class="executive-assurance-strip">
+            <article><strong id="admin-assurance-ownership">0%</strong><span>Ownership fields complete</span></article>
+            <article><strong id="admin-assurance-evidence">0%</strong><span>Average evidence completeness</span></article>
+            <article><strong id="admin-assurance-budget">0%</strong><span>Approved-budget coverage</span></article>
+            <article><strong id="admin-assurance-overdue">0</strong><span>Overdue active initiatives</span></article>
+            <article><strong id="admin-kpi-users">0</strong><span>Registered platform users</span></article>
           </div>
         </section>
 

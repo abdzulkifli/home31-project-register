@@ -1,7 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
@@ -20,6 +20,45 @@ const pillars = [
   "Customer Experience Transformation",
   "Workforce & Leadership Transformation"
 ];
+
+// Configurable AMP2026 management-comparison baseline from the reference dashboard.
+const AMP2026_BASELINE = {
+  portfolioItems: 71,
+  portfolioCost: 33027240.80,
+  strategicPriority: 21,
+  watchlist: 27,
+  zeroBudgetOrConfirmedCost: 30,
+  departments: 18,
+  departmentApprovedBudget: {
+    "Finance": 11800000,
+    "Monitoring and Recovery": 10100000,
+    "Process and Operational Excellence": 5500000,
+    "Credit Admin 2": 1500000,
+    "Risk Management": 900000,
+    "Treasury": 1700000,
+    "Information Communication Technology": 650000,
+    "Legal and Secretariat": 200000,
+    "Integrity and Compliance": 150000
+  }
+};
+
+const EXECUTIVE_COLORS = {
+  navy: "#102f49",
+  grid: "rgba(141,178,200,.17)",
+  text: "#b4c6d2",
+  white: "#edf4f8",
+  gold: "#d1ad63",
+  teal: "#57999b",
+  blue: "#7f99af",
+  lightBlue: "#78a8c4",
+  red: "#d26066",
+  green: "#6ca69b",
+  amber: "#d1ad63",
+  slate: "#7892a6"
+};
+
+let pillarMetric = "count";
+
 
 let currentUser = null;
 let currentProfile = null;
@@ -95,6 +134,14 @@ function bindEvents() {
   $("#admin-create-user-form").addEventListener("submit", createUserAsAdmin);
   $("#generate-password-button").addEventListener("click", generateTemporaryPassword);
   $("#refresh-admin-data").addEventListener("click", loadAdminData);
+  $("#admin-overview-refresh").addEventListener("click", loadAdminData);
+  $$("[data-pillar-metric]").forEach(button =>
+    button.addEventListener("click", () => {
+      pillarMetric = button.dataset.pillarMetric;
+      $$("[data-pillar-metric]").forEach(item => item.classList.toggle("active", item === button));
+      renderExecutivePillarChart();
+    })
+  );
 
   $("#initiative-form").addEventListener("submit", saveInitiative);
   $("#close-initiative-modal").addEventListener("click", closeInitiativeModal);
@@ -506,81 +553,880 @@ async function loadAdminData() {
 function renderAdminOverview() {
   if (currentProfile?.role !== "super_admin") return;
 
+  const metrics = calculateExecutiveMetrics();
+  const total = metrics.total;
+
+  $("#admin-kpi-total").textContent = total;
+  $("#admin-kpi-total-note").textContent = `${metrics.departments.length} departments represented`;
+  $("#admin-kpi-health").textContent = `${metrics.strategicReadiness}%`;
+  $("#admin-kpi-health-note").textContent = `${metrics.fullyReady} initiatives meet all seven checks`;
+  $("#admin-kpi-effective-cost").textContent = compactRinggit(metrics.effectiveCost);
+  $("#admin-kpi-effective-note").textContent = `${metrics.costConfirmedCount}/${total || 0} confirmed cost records`;
+  $("#admin-kpi-reduction").textContent = compactRinggit(metrics.challengeReduction);
+  $("#admin-kpi-reduction-note").textContent = metrics.originalCost
+    ? `${formatPercent(metrics.challengeReduction / metrics.originalCost * 100)} below original estimate`
+    : "Original estimate not yet populated";
+  $("#admin-kpi-priority").textContent = metrics.strategicPriority;
+  $("#admin-kpi-risk").textContent = metrics.atRisk;
+  $("#admin-kpi-hr").textContent = metrics.hrDependent;
+  $("#admin-kpi-ict").textContent = metrics.ictDependent;
+  $("#admin-kpi-users").textContent = adminProfiles.length;
+
+  $("#admin-assurance-ownership").textContent = `${metrics.ownershipCompleteness}%`;
+  $("#admin-assurance-evidence").textContent = `${metrics.evidenceAverage}%`;
+  $("#admin-assurance-budget").textContent = `${metrics.approvedBudgetCoverage}%`;
+  $("#admin-assurance-overdue").textContent = metrics.overdue;
+
+  renderExecutiveNarrative(metrics);
+  renderExecutiveAttention(metrics);
+  renderExecutiveBudget(metrics);
+  renderExecutiveReadiness(metrics);
+  renderExecutiveComparison(metrics);
+  renderExecutiveLists(metrics);
+  renderAdminCharts(metrics);
+  bindExecutiveRecordButtons();
+}
+
+function calculateExecutiveMetrics() {
   const today = new Date().toISOString().slice(0, 10);
   const total = adminProjects.length;
-  const health = total
-    ? Math.round(adminProjects.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
-    : 0;
-  const risk = adminProjects.filter(project =>
+  const numeric = value => {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  };
+
+  const originalCost = adminProjects.reduce((sum, project) => sum + (numeric(project.estimated_cost) || 0), 0);
+  const effectiveCost = adminProjects.reduce((sum, project) => sum + (numeric(project.estimated_cost_post_challenge) || 0), 0);
+  const proposedBudget = adminProjects.reduce((sum, project) => sum + (numeric(project.proposed_budget_post_retreat) || 0), 0);
+  const approvedBudget = adminProjects.reduce((sum, project) => sum + (numeric(project.approved_budget) || 0), 0);
+  const costConfirmedCount = adminProjects.filter(project => numeric(project.estimated_cost_post_challenge) !== null).length;
+  const proposedBudgetCount = adminProjects.filter(project => numeric(project.proposed_budget_post_retreat) !== null).length;
+  const approvedBudgetCount = adminProjects.filter(project => numeric(project.approved_budget) !== null).length;
+  const strategicPriority = adminProjects.filter(project =>
+    ["Strategic Priority", "Corporate Priority"].includes(project.priority_status) ||
+    project.priority === "Strategic"
+  ).length;
+  const watchlist = adminProjects.filter(project =>
+    ["Watchlist / Under Review", "Not Assessed"].includes(project.priority_status)
+  ).length;
+  const atRisk = adminProjects.filter(project =>
     project.status === "At Risk" || ["High", "Extreme"].includes(project.risk_level)
   ).length;
-  const hr = adminProjects.filter(project => ["Required", "To be confirmed"].includes(project.hr_collaboration_status)).length;
+  const hrDependent = adminProjects.filter(project =>
+    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
+  ).length;
+  const ictDependent = adminProjects.filter(project =>
+    (project.system_type && project.system_type !== "Non System") ||
+    !["N/A", "None", null, undefined, ""].includes(project.ict_classification)
+  ).length;
   const overdue = adminProjects.filter(project =>
     project.target_date && project.target_date < today && project.status !== "Completed"
   ).length;
+  const departments = [...new Set(adminProjects.map(project => project.department).filter(Boolean))];
 
-  $("#admin-kpi-total").textContent = total;
-  $("#admin-kpi-health").textContent = `${health}%`;
-  $("#admin-kpi-risk").textContent = risk;
-  $("#admin-kpi-hr").textContent = hr;
-  $("#admin-kpi-overdue").textContent = overdue;
-  $("#admin-kpi-users").textContent = adminProfiles.length;
+  const readinessScores = adminProjects.map(project => calculateProjectReadiness(project));
+  const strategicReadiness = total
+    ? Math.round(readinessScores.reduce((sum, item) => sum + item.score, 0) / total)
+    : 0;
+  const fullyReady = readinessScores.filter(item => item.checksMet === item.totalChecks).length;
+  const followUp = total - fullyReady;
 
-  renderAdminCharts();
+  const ownershipComplete = adminProjects.filter(project =>
+    project.executive_sponsor && project.accountable_owner && project.delivery_lead
+  ).length;
+  const ownershipCompleteness = total ? Math.round(ownershipComplete / total * 100) : 0;
+  const evidenceAverage = total
+    ? Math.round(adminProjects.reduce((sum, project) => sum + Number(project.evidence_completeness || 0), 0) / total)
+    : 0;
+  const approvedBudgetCoverage = total ? Math.round(approvedBudgetCount / total * 100) : 0;
+
+  const critical = adminProjects.filter(project =>
+    ["Extreme"].includes(project.risk_level) ||
+    project.status === "At Risk" ||
+    (project.target_date && project.target_date < today && project.status !== "Completed") ||
+    !project.accountable_owner
+  );
+  const watch = adminProjects.filter(project => {
+    if (critical.includes(project)) return false;
+    return ["High"].includes(project.risk_level) ||
+      Number(project.readiness_score || 0) < 70 ||
+      Number(project.evidence_completeness || 0) < 70 ||
+      project.ict_classification === "New - Pending ICT review" ||
+      ["Required", "To be confirmed"].includes(project.hr_collaboration_status) &&
+        !["Supported", "Not required"].includes(project.hr_review_status);
+  });
+  const stable = Math.max(0, total - critical.length - watch.length);
+
+  const decisionCounts = {
+    approvedBudget: adminProjects.filter(project => numeric(project.approved_budget) === null).length,
+    ict: adminProjects.filter(project =>
+      project.ict_classification === "New - Pending ICT review" ||
+      ((project.system_type && project.system_type !== "Non System") && !project.ict_classification)
+    ).length,
+    hr: adminProjects.filter(project =>
+      ["Required", "To be confirmed"].includes(project.hr_collaboration_status) &&
+      !["Supported", "Not required"].includes(project.hr_review_status)
+    ).length,
+    evidence: adminProjects.filter(project => Number(project.evidence_completeness || 0) < 70).length,
+    priority: adminProjects.filter(project =>
+      ["Not Assessed", "Watchlist / Under Review"].includes(project.priority_status)
+    ).length
+  };
+
+  return {
+    total,
+    originalCost,
+    effectiveCost,
+    proposedBudget,
+    approvedBudget,
+    challengeReduction: originalCost - effectiveCost,
+    costConfirmedCount,
+    proposedBudgetCount,
+    approvedBudgetCount,
+    strategicPriority,
+    watchlist,
+    atRisk,
+    hrDependent,
+    ictDependent,
+    overdue,
+    departments,
+    strategicReadiness,
+    fullyReady,
+    followUp,
+    ownershipCompleteness,
+    evidenceAverage,
+    approvedBudgetCoverage,
+    critical,
+    watch,
+    stable,
+    decisionCounts,
+    readinessScores
+  };
 }
 
-function renderAdminCharts() {
-  ["adminStatus", "adminPillar", "adminRisk", "adminDepartment"].forEach(key => charts[key]?.destroy());
+function calculateProjectReadiness(project) {
+  const costKnown = project.estimated_cost_post_challenge !== null &&
+    project.estimated_cost_post_challenge !== undefined &&
+    project.estimated_cost_post_challenge !== "";
+  const hasDatedPlan = Boolean(project.start_date || project.target_date || extractProjectDateRange(project));
+  const fit = deriveHome31Fit(project);
+  const checks = [
+    Boolean(project.project_description || project.problem_opportunity),
+    hasDatedPlan,
+    costKnown,
+    Boolean(project.priority_status && project.priority_status !== "Not Assessed"),
+    Boolean(project.ict_classification && project.ict_classification !== "New - Pending ICT review"),
+    Boolean(project.strategic_pillar),
+    fit !== "Needs Validation"
+  ];
+  const checksMet = checks.filter(Boolean).length;
+  return {
+    project,
+    checksMet,
+    totalChecks: checks.length,
+    score: Math.round(checksMet / checks.length * 100)
+  };
+}
+
+function deriveHome31Fit(project) {
+  if (!project.strategic_pillar || !project.project_description) return "Needs Validation";
+  if (project.status === "On Hold") return "Duplicate / Consolidate";
+  if (project.initiative_category === "Business as usual") return "BAU · Supporting Enhancement";
+  if (["Strategic Priority", "Corporate Priority"].includes(project.priority_status) || project.priority === "Strategic") {
+    return "Core Initiative";
+  }
+  if ((project.system_type && project.system_type !== "Non System") ||
+      !["N/A", "None", null, undefined, ""].includes(project.ict_classification)) {
+    return "Enabler";
+  }
+  if (project.strategic_thrust === "Good Governance" && project.priority_status === "Watchlist / Under Review") {
+    return "Policy Review";
+  }
+  return "Supporting Activity";
+}
+
+function renderExecutiveNarrative(metrics) {
+  const topDepartment = departmentCostData()[0];
+  const topPillar = pillarData("count")[0];
+  const health = metrics.strategicReadiness >= 85 && metrics.atRisk <= Math.max(1, metrics.total * .1)
+    ? "Healthy"
+    : metrics.strategicReadiness >= 70
+      ? "Watch"
+      : "Intervention required";
+
+  const badge = $("#admin-portfolio-health-badge");
+  badge.textContent = health;
+  badge.className = `executive-status-chip ${
+    health === "Healthy" ? "good" : health === "Watch" ? "watch" : "critical"
+  }`;
+
+  const costStory = metrics.originalCost
+    ? `The effective post-challenge cost is ${formatRinggit(metrics.effectiveCost)}, representing a ${formatRinggit(metrics.challengeReduction)} reduction from original estimates.`
+    : `Cost information is still being established; ${metrics.costConfirmedCount} of ${metrics.total} records currently carry a confirmed post-challenge amount.`;
+
+  $("#admin-executive-insight").textContent =
+    `The HOME31 register currently contains ${metrics.total} initiatives across ${metrics.departments.length} departments, with strategic readiness of ${metrics.strategicReadiness}%. ${costStory} ` +
+    `${topPillar ? `${topPillar.label} carries the largest initiative concentration` : "Strategic-pillar concentration is not yet available"}` +
+    `${topDepartment ? `, while ${topDepartment.label} has the highest confirmed cost exposure.` : "."}`;
+
+  $("#admin-insight-facts").innerHTML = `
+    <article><strong>${metrics.strategicPriority} strategic-priority initiatives</strong><span>${metrics.watchlist} remain on watchlist or unassessed.</span></article>
+    <article><strong>${metrics.ownershipCompleteness}% ownership completeness</strong><span>Executive sponsor, accountable owner and delivery lead.</span></article>
+    <article><strong>${metrics.evidenceAverage}% evidence maturity</strong><span>Average evidence completeness across the portfolio.</span></article>
+  `;
+}
+
+function renderExecutiveAttention(metrics) {
+  $("#admin-attention-critical").textContent = metrics.critical.length;
+  $("#admin-attention-watch").textContent = metrics.watch.length;
+  $("#admin-attention-stable").textContent = metrics.stable;
+
+  const rows = [
+    ["Approved budget still blank", metrics.decisionCounts.approvedBudget],
+    ["ICT review / classification pending", metrics.decisionCounts.ict],
+    ["HR review or collaboration pending", metrics.decisionCounts.hr],
+    ["Evidence completeness below 70%", metrics.decisionCounts.evidence],
+    ["Priority decision outstanding", metrics.decisionCounts.priority]
+  ];
+
+  $("#admin-attention-summary").innerHTML = rows.map(([label, value]) => `
+    <div class="attention-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>
+  `).join("");
+}
+
+function renderExecutiveBudget(metrics) {
+  $("#admin-budget-metrics").innerHTML = `
+    <article><strong>${formatRinggit(metrics.challengeReduction)}</strong><span>Challenge movement versus original estimate</span></article>
+    <article><strong>${metrics.proposedBudgetCount}/${metrics.total}</strong><span>Initiatives with proposed budget populated</span></article>
+    <article><strong>${metrics.approvedBudgetCount}/${metrics.total}</strong><span>Initiatives with approved budget populated</span></article>
+  `;
+
+  const missingCost = metrics.total - metrics.costConfirmedCount;
+  $("#admin-budget-footnote").textContent =
+    `Only numeric post-challenge values are included in the effective total. ${missingCost} cost items remain blank or TBC. ` +
+    `Proposed and approved budget totals remain understated until those source fields are populated.`;
+}
+
+function renderExecutiveReadiness(metrics) {
+  $("#admin-readiness-gauge-value").textContent = `${metrics.strategicReadiness}%`;
+
+  const departments = departmentReadinessData().slice(0, 10);
+  $("#admin-department-readiness-bars").innerHTML = departments.map(item => `
+    <div class="department-readiness-row" title="${escapeHtml(item.label)}: ${item.value}%">
+      <span>${escapeHtml(item.label)}</span>
+      <div class="department-readiness-track"><i style="width:${item.value}%"></i></div>
+      <strong>${item.value}%</strong>
+    </div>
+  `).join("");
+
+  $("#admin-readiness-footnote").innerHTML =
+    `<strong>${metrics.fullyReady}</strong> initiatives meet all seven checks; <strong>${metrics.followUp}</strong> have at least one completeness follow-up. ` +
+    `Budget approval coverage is shown separately because it is a downstream governance stage.`;
+}
+
+function renderExecutiveComparison(metrics) {
+  const current = {
+    portfolioItems: metrics.total,
+    portfolioCost: metrics.effectiveCost,
+    strategicPriority: metrics.strategicPriority,
+    watchlist: metrics.watchlist,
+    zeroBudgetOrConfirmedCost: adminProjects.filter(project =>
+      Number(project.estimated_cost_post_challenge || 0) === 0
+    ).length,
+    departments: metrics.departments.length
+  };
+
+  const cards = [
+    ["Portfolio items", "portfolioItems", value => String(value)],
+    ["Portfolio cost basis", "portfolioCost", compactRinggit],
+    ["Priority / corporate priority", "strategicPriority", value => String(value)],
+    ["Watchlist / under review", "watchlist", value => String(value)],
+    ["Zero budget / confirmed cost", "zeroBudgetOrConfirmedCost", value => String(value)],
+    ["Departments represented", "departments", value => String(value)]
+  ];
+
+  $("#admin-comparison-grid").innerHTML = cards.map(([label, key, formatter]) => {
+    const oldValue = AMP2026_BASELINE[key];
+    const newValue = current[key];
+    const delta = newValue - oldValue;
+    const percentage = oldValue ? delta / oldValue * 100 : 0;
+    return `
+      <article class="comparison-card">
+        <span>${escapeHtml(label)}</span>
+        <div class="comparison-values">
+          <div><span>AMP2026</span><strong>${formatter(oldValue)}</strong></div>
+          <div><span>AMP2027</span><strong>${formatter(newValue)}</strong></div>
+        </div>
+        <div class="comparison-delta ${delta > 0 ? "negative" : ""}">
+          ${delta >= 0 ? "+" : ""}${key === "portfolioCost" ? compactRinggit(delta) : delta.toLocaleString("en-MY")}
+          (${delta >= 0 ? "+" : ""}${percentage.toFixed(1)}%)
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  $("#admin-comparison-notes").innerHTML = `
+    <div class="comparison-note"><strong>AMP2027 reconciliation:</strong> ${formatRinggit(metrics.effectiveCost)} is the sum of numeric values in “Estimated Cost (Post Challenge)”. Blank or TBC items are excluded until confirmed.</div>
+    <div class="comparison-note"><strong>Comparison basis:</strong> This is a management comparison, not a like-for-like accounting statement. AMP2026 is an approved-budget baseline; AMP2027 remains a post-challenge portfolio until proposed and approved budget fields are completed.</div>
+  `;
+}
+
+function renderExecutiveLists(metrics) {
+  const decisionItems = [
+    {
+      title: "Budget approval coverage",
+      detail: `${metrics.decisionCounts.approvedBudget} initiatives require proposed or approved budget completion.`,
+      count: metrics.decisionCounts.approvedBudget
+    },
+    {
+      title: "ICT assessment",
+      detail: `${metrics.decisionCounts.ict} initiatives require classification or architecture input.`,
+      count: metrics.decisionCounts.ict
+    },
+    {
+      title: "HR and workforce review",
+      detail: `${metrics.decisionCounts.hr} initiatives require HR support, clarification or endorsement.`,
+      count: metrics.decisionCounts.hr
+    },
+    {
+      title: "Evidence closure",
+      detail: `${metrics.decisionCounts.evidence} initiatives remain below 70% evidence completeness.`,
+      count: metrics.decisionCounts.evidence
+    },
+    {
+      title: "Priority determination",
+      detail: `${metrics.decisionCounts.priority} initiatives remain unassessed or under review.`,
+      count: metrics.decisionCounts.priority
+    }
+  ].filter(item => item.count > 0);
+
+  $("#admin-decision-queue").innerHTML = decisionItems.length
+    ? decisionItems.map(item => `
+      <div class="executive-list-item">
+        <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div>
+        <em>${item.count}</em>
+      </div>
+    `).join("")
+    : '<div class="executive-empty">No executive decision queue is currently outstanding.</div>';
+
+  const topCost = adminProjects
+    .slice()
+    .sort((a, b) => effectiveProjectCost(b) - effectiveProjectCost(a))
+    .filter(project => effectiveProjectCost(project) > 0)
+    .slice(0, 5);
+
+  $("#admin-top-cost-list").innerHTML = topCost.length
+    ? topCost.map(project => `
+      <div class="executive-list-item">
+        <div><strong>${escapeHtml(project.initiative_name)}</strong><span>${escapeHtml(project.department || "No department")} · ${escapeHtml(project.priority_status || "Not assessed")}</span></div>
+        <button data-executive-open="${project.id}" type="button">${compactRinggit(effectiveProjectCost(project))}</button>
+      </div>
+    `).join("")
+    : '<div class="executive-empty">No confirmed cost records are available.</div>';
+
+  const riskOrder = { Extreme: 4, High: 3, Medium: 2, Low: 1 };
+  const topRisk = adminProjects
+    .slice()
+    .sort((a, b) =>
+      (riskOrder[b.risk_level] || 0) - (riskOrder[a.risk_level] || 0) ||
+      Number(a.readiness_score || 0) - Number(b.readiness_score || 0)
+    )
+    .slice(0, 5);
+
+  $("#admin-top-risk-list").innerHTML = topRisk.length
+    ? topRisk.map(project => `
+      <div class="executive-list-item">
+        <div><strong>${escapeHtml(project.initiative_name)}</strong><span>${escapeHtml(project.department || "No department")} · ${Number(project.readiness_score || 0)}% readiness</span></div>
+        <button data-executive-open="${project.id}" type="button">${escapeHtml(project.risk_level || "Not rated")}</button>
+      </div>
+    `).join("")
+    : '<div class="executive-empty">No risk records are available.</div>';
+}
+
+function bindExecutiveRecordButtons() {
+  $$("[data-executive-open]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal(button.dataset.executiveOpen))
+  );
+}
+
+function renderAdminCharts(metrics = calculateExecutiveMetrics()) {
+  [
+    "adminBudgetJourney",
+    "adminReadinessGauge",
+    "adminDeliveryLoad",
+    "adminCostBenefit",
+    "adminPillar",
+    "adminHome31Fit",
+    "adminDepartmentCost"
+  ].forEach(key => charts[key]?.destroy());
+
   if (typeof Chart === "undefined") return;
 
-  const statuses = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
-  const risks = ["Low", "Medium", "High", "Extreme"];
+  const common = executiveChartOptions();
 
-  charts.adminStatus = new Chart($("#admin-status-chart"), {
-    type: "doughnut",
+  charts.adminBudgetJourney = new Chart($("#admin-budget-journey-chart"), {
+    type: "bar",
     data: {
-      labels: statuses,
-      datasets: [{ data: statuses.map(status => adminProjects.filter(project => project.status === status).length) }]
+      labels: ["Original Estimate", "Effective Post-Challenge", "Proposed Budget", "Approved Budget"],
+      datasets: [{
+        data: [metrics.originalCost, metrics.effectiveCost, metrics.proposedBudget, metrics.approvedBudget],
+        backgroundColor: [EXECUTIVE_COLORS.blue, EXECUTIVE_COLORS.gold, EXECUTIVE_COLORS.teal, EXECUTIVE_COLORS.green],
+        borderRadius: 8,
+        maxBarThickness: 88
+      }]
     },
-    options: baseChartOptions()
+    options: {
+      ...common,
+      plugins: {
+        ...common.plugins,
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: context => formatRinggit(context.raw) }
+        }
+      },
+      scales: executiveMoneyScales()
+    }
   });
 
+  charts.adminReadinessGauge = new Chart($("#admin-readiness-gauge-chart"), {
+    type: "doughnut",
+    data: {
+      datasets: [{
+        data: [metrics.strategicReadiness, Math.max(0, 100 - metrics.strategicReadiness)],
+        backgroundColor: [EXECUTIVE_COLORS.teal, "#294a62"],
+        borderWidth: 0,
+        circumference: 230,
+        rotation: 245,
+        cutout: "78%"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+
+  const delivery = quarterlyDeliveryData();
+  charts.adminDeliveryLoad = new Chart($("#admin-delivery-load-chart"), {
+    data: {
+      labels: delivery.labels,
+      datasets: [
+        {
+          type: "bar",
+          label: "All Active",
+          data: delivery.active,
+          backgroundColor: "rgba(87,153,155,.85)",
+          borderRadius: 5
+        },
+        {
+          type: "line",
+          label: "Strategic Priority",
+          data: delivery.priority,
+          borderColor: EXECUTIVE_COLORS.gold,
+          backgroundColor: EXECUTIVE_COLORS.gold,
+          pointBackgroundColor: "#f4f5f6",
+          pointBorderColor: EXECUTIVE_COLORS.gold,
+          pointRadius: 4,
+          borderWidth: 2,
+          tension: .25
+        }
+      ]
+    },
+    options: {
+      ...common,
+      scales: executiveCountScales()
+    }
+  });
+
+  const matrixData = adminProjects.map(project => {
+    const cost = effectiveProjectCost(project);
+    const cba = Number(project.cba_ratio || 0);
+    const complexity = project.ict_classification === "High" || project.people_impact_level === "Enterprise-wide"
+      ? 22
+      : project.ict_classification === "Medium" || project.people_impact_level === "High"
+        ? 16
+        : 10;
+    return {
+      x: cost,
+      y: cba,
+      r: complexity,
+      project
+    };
+  });
+
+  const priorityGroups = ["Strategic Priority", "Watchlist / Under Review", "Recommended", "Not Classified"];
+  const priorityColors = {
+    "Strategic Priority": "#5978c7",
+    "Watchlist / Under Review": "#7fae71",
+    "Recommended": EXECUTIVE_COLORS.gold,
+    "Not Classified": EXECUTIVE_COLORS.red
+  };
+
+  charts.adminCostBenefit = new Chart($("#admin-cost-benefit-chart"), {
+    type: "bubble",
+    data: {
+      datasets: priorityGroups.map(group => ({
+        label: group,
+        data: matrixData
+          .filter(item => normalizePriorityGroup(item.project) === group)
+          .map(item => ({ x: item.x, y: item.y, r: item.r, project: item.project })),
+        backgroundColor: priorityColors[group] + "cc",
+        borderColor: priorityColors[group],
+        borderWidth: 1
+      }))
+    },
+    options: {
+      ...common,
+      onClick: (_event, elements, chart) => {
+        if (!elements.length) return;
+        const point = chart.data.datasets[elements[0].datasetIndex].data[elements[0].index];
+        if (point?.project?.id) openInitiativeModal(point.project.id);
+      },
+      plugins: {
+        ...common.plugins,
+        tooltip: {
+          callbacks: {
+            label: context => {
+              const point = context.raw;
+              const project = point.project;
+              return [
+                project.initiative_name,
+                `Cost: ${formatRinggit(point.x)}`,
+                `CBA: ${point.y || "Not recorded"}`,
+                `ICT: ${project.ict_classification || "Not recorded"}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: EXECUTIVE_COLORS.grid },
+          ticks: { color: EXECUTIVE_COLORS.text, callback: value => compactRinggit(value) },
+          title: { display: true, text: "Effective post-challenge cost", color: EXECUTIVE_COLORS.text }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: EXECUTIVE_COLORS.grid },
+          ticks: { color: EXECUTIVE_COLORS.text },
+          title: { display: true, text: "CBA ratio", color: EXECUTIVE_COLORS.text }
+        }
+      }
+    }
+  });
+
+  renderExecutivePillarChart();
+
+  const fitLabels = ["Enabler", "Supporting Activity", "Core Initiative", "Duplicate / Consolidate", "Needs Validation", "BAU · Supporting Enhancement", "Policy Review"];
+  charts.adminHome31Fit = new Chart($("#admin-home31-fit-chart"), {
+    type: "doughnut",
+    data: {
+      labels: fitLabels,
+      datasets: [{
+        data: fitLabels.map(label => adminProjects.filter(project => deriveHome31Fit(project) === label).length),
+        backgroundColor: ["#d1ad63", "#7f99af", "#57999b", "#6f86a0", "#d9b769", "#a76a6f", "#8aa1b1"],
+        borderColor: "#102f49",
+        borderWidth: 4,
+        cutout: "62%"
+      }]
+    },
+    options: {
+      ...common,
+      plugins: {
+        ...common.plugins,
+        legend: {
+          position: "bottom",
+          labels: { color: EXECUTIVE_COLORS.text, usePointStyle: true, boxWidth: 9, padding: 12, font: { size: 9 } }
+        }
+      }
+    }
+  });
+
+  const departmentCosts = departmentCostData().slice(0, 10);
+  charts.adminDepartmentCost = new Chart($("#admin-department-cost-chart"), {
+    type: "bar",
+    data: {
+      labels: departmentCosts.map(item => item.label),
+      datasets: [
+        {
+          label: "AMP2026 Approved",
+          data: departmentCosts.map(item => AMP2026_BASELINE.departmentApprovedBudget[item.label] || 0),
+          backgroundColor: EXECUTIVE_COLORS.blue,
+          borderRadius: 6
+        },
+        {
+          label: "AMP2027 Effective",
+          data: departmentCosts.map(item => item.value),
+          backgroundColor: EXECUTIVE_COLORS.gold,
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      ...common,
+      indexAxis: "y",
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        const department = departmentCosts[elements[0].index]?.label;
+        if (!department) return;
+        $("#admin-search").value = department;
+        showModule("admin-portfolio");
+        renderAdminPortfolio();
+      },
+      scales: executiveMoneyScales()
+    }
+  });
+
+  const topDepartment = departmentCosts[0];
+  $("#admin-cost-concentration-footnote").textContent = topDepartment
+    ? `${topDepartment.label} carries ${formatRinggit(topDepartment.value)} (${metrics.effectiveCost ? (topDepartment.value / metrics.effectiveCost * 100).toFixed(1) : "0.0"}% of confirmed AMP2027 cost). Click an AMP2027 bar to open that department in the portfolio filter.`
+    : "Department cost concentration will appear when confirmed post-challenge costs are recorded.";
+
+  $("#admin-delivery-footnote").textContent =
+    "Quarter load uses dates detected in the action plan, then start and target dates as fallback. Undated initiatives are excluded from the quarterly plot.";
+
+  $("#admin-matrix-footnote").textContent =
+    "Click a bubble to open the full initiative record. Zero-cost initiatives remain visible at the origin; tooltip details include ICT classification.";
+}
+
+function renderExecutivePillarChart() {
+  charts.adminPillar?.destroy();
+  if (typeof Chart === "undefined") return;
+
+  const data = pillarData(pillarMetric);
   charts.adminPillar = new Chart($("#admin-pillar-chart"), {
     type: "bar",
     data: {
-      labels: pillars,
-      datasets: [{ label: "Initiatives", data: pillars.map(pillar => adminProjects.filter(project => project.strategic_pillar === pillar).length), borderRadius: 8 }]
-    },
-    options: { ...baseChartOptions(), indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
-  });
-
-  charts.adminRisk = new Chart($("#admin-risk-chart"), {
-    type: "pie",
-    data: {
-      labels: risks,
-      datasets: [{ data: risks.map(risk => adminProjects.filter(project => project.risk_level === risk).length) }]
-    },
-    options: baseChartOptions()
-  });
-
-  const departments = [...new Set(adminProjects.map(project => project.department || "Not recorded"))];
-  charts.adminDepartment = new Chart($("#admin-department-chart"), {
-    type: "bar",
-    data: {
-      labels: departments,
+      labels: data.map(item => shortPillar(item.label)),
       datasets: [{
-        label: "Average readiness",
-        data: departments.map(department => {
-          const records = adminProjects.filter(project => (project.department || "Not recorded") === department);
-          return records.length
-            ? Math.round(records.reduce((sum, record) => sum + Number(record.readiness_score || 0), 0) / records.length)
-            : 0;
-        }),
-        borderRadius: 8
+        label: pillarMetric === "count" ? "Initiatives" : "Effective cost",
+        data: data.map(item => item.value),
+        backgroundColor: EXECUTIVE_COLORS.gold,
+        borderRadius: 7
       }]
     },
-    options: { ...baseChartOptions(), scales: { y: { min: 0, max: 100 } } }
+    options: {
+      ...executiveChartOptions(),
+      indexAxis: "y",
+      onClick: (_event, elements) => {
+        if (!elements.length) return;
+        const pillar = data[elements[0].index]?.label;
+        if (!pillar) return;
+        $("#admin-pillar-filter").value = pillar;
+        showModule("admin-portfolio");
+        renderAdminPortfolio();
+      },
+      plugins: {
+        ...executiveChartOptions().plugins,
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => pillarMetric === "cost"
+              ? formatRinggit(context.raw)
+              : `${context.raw} initiatives`
+          }
+        }
+      },
+      scales: pillarMetric === "cost" ? executiveMoneyScales() : executiveCountScales()
+    }
   });
+}
+
+function executiveChartOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "nearest", intersect: true },
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          color: EXECUTIVE_COLORS.text,
+          usePointStyle: true,
+          boxWidth: 9,
+          padding: 15,
+          font: { size: 9 }
+        }
+      },
+      tooltip: {
+        backgroundColor: "#061b2b",
+        titleColor: "#f0f5f8",
+        bodyColor: "#b6c8d3",
+        borderColor: "#476b84",
+        borderWidth: 1,
+        padding: 11
+      }
+    }
+  };
+}
+
+function executiveCountScales() {
+  return {
+    x: {
+      beginAtZero: true,
+      grid: { color: EXECUTIVE_COLORS.grid },
+      ticks: { color: EXECUTIVE_COLORS.text, precision: 0 }
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: EXECUTIVE_COLORS.grid },
+      ticks: { color: EXECUTIVE_COLORS.text, precision: 0 }
+    }
+  };
+}
+
+function executiveMoneyScales() {
+  return {
+    x: {
+      beginAtZero: true,
+      grid: { color: EXECUTIVE_COLORS.grid },
+      ticks: { color: EXECUTIVE_COLORS.text, callback: value => compactRinggit(value) }
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: EXECUTIVE_COLORS.grid },
+      ticks: { color: EXECUTIVE_COLORS.text, callback: value => compactRinggit(value) }
+    }
+  };
+}
+
+function normalizePriorityGroup(project) {
+  const value = project.priority_status;
+  if (value === "Strategic Priority" || project.priority === "Strategic") return "Strategic Priority";
+  if (value === "Watchlist / Under Review" || value === "Not Assessed") return "Watchlist / Under Review";
+  if (value === "Recommended" || value === "Dept Monitoring") return "Recommended";
+  return "Not Classified";
+}
+
+function effectiveProjectCost(project) {
+  const challenged = project.estimated_cost_post_challenge;
+  if (challenged !== null && challenged !== undefined && challenged !== "") {
+    return Number(challenged) || 0;
+  }
+  return Number(project.estimated_cost || 0);
+}
+
+function pillarData(metric = "count") {
+  return pillars.map(pillar => {
+    const records = adminProjects.filter(project => project.strategic_pillar === pillar);
+    return {
+      label: pillar,
+      value: metric === "cost"
+        ? records.reduce((sum, project) => sum + effectiveProjectCost(project), 0)
+        : records.length
+    };
+  }).sort((a, b) => b.value - a.value);
+}
+
+function shortPillar(value) {
+  const names = {
+    "Financial Sustainability": "Financial Sustainability",
+    "Digital & Data Transformation": "Digital & Data",
+    "Governance Stewardship": "Governance",
+    "Customer Experience Transformation": "Customer Experience",
+    "Workforce & Leadership Transformation": "Workforce & Leadership"
+  };
+  return names[value] || value;
+}
+
+function departmentCostData() {
+  const map = new Map();
+  adminProjects.forEach(project => {
+    const department = project.department || "Not recorded";
+    map.set(department, (map.get(department) || 0) + effectiveProjectCost(project));
+  });
+  return [...map.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function departmentReadinessData() {
+  const map = new Map();
+  adminProjects.forEach(project => {
+    const department = project.department || "Not recorded";
+    const current = map.get(department) || { total: 0, count: 0 };
+    current.total += calculateProjectReadiness(project).score;
+    current.count += 1;
+    map.set(department, current);
+  });
+  return [...map.entries()]
+    .map(([label, data]) => ({ label, value: Math.round(data.total / data.count) }))
+    .sort((a, b) => a.value - b.value);
+}
+
+function extractProjectDateRange(project) {
+  const text = project.action_plan || "";
+  const matches = [
+    ...text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g),
+    ...text.matchAll(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g)
+  ];
+
+  const dates = matches.map(match => {
+    if (match[1]?.length === 4) return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00`);
+    return new Date(`${match[3]}-${match[2]}-${match[1]}T00:00:00`);
+  }).filter(date => !Number.isNaN(date.getTime()));
+
+  const fallback = [project.start_date, project.target_date]
+    .filter(Boolean)
+    .map(value => new Date(`${value}T00:00:00`))
+    .filter(date => !Number.isNaN(date.getTime()));
+
+  const all = [...dates, ...fallback].sort((a, b) => a - b);
+  if (!all.length) return null;
+  return { start: all[0], end: all[all.length - 1] };
+}
+
+function quarterlyDeliveryData() {
+  const ranges = adminProjects
+    .map(project => ({ project, range: extractProjectDateRange(project) }))
+    .filter(item => item.range);
+
+  const currentYear = new Date().getFullYear();
+  const minimumYear = ranges.length ? Math.min(...ranges.map(item => item.range.start.getFullYear())) : currentYear;
+  const maximumYear = ranges.length ? Math.max(...ranges.map(item => item.range.end.getFullYear())) : currentYear + 2;
+  const startYear = Math.max(currentYear - 1, minimumYear);
+  const endYear = Math.min(startYear + 4, Math.max(startYear + 2, maximumYear));
+
+  const quarters = [];
+  for (let year = startYear; year <= endYear; year += 1) {
+    for (let quarter = 1; quarter <= 4; quarter += 1) {
+      const startMonth = (quarter - 1) * 3;
+      const start = new Date(year, startMonth, 1);
+      const end = new Date(year, startMonth + 3, 0, 23, 59, 59);
+      quarters.push({ label: `${year} Q${quarter}`, start, end });
+    }
+  }
+
+  return {
+    labels: quarters.map(item => item.label),
+    active: quarters.map(quarter =>
+      ranges.filter(item => item.range.start <= quarter.end && item.range.end >= quarter.start).length
+    ),
+    priority: quarters.map(quarter =>
+      ranges.filter(item =>
+        item.range.start <= quarter.end &&
+        item.range.end >= quarter.start &&
+        normalizePriorityGroup(item.project) === "Strategic Priority"
+      ).length
+    )
+  };
+}
+
+function compactRinggit(value) {
+  const number = Number(value || 0);
+  const absolute = Math.abs(number);
+  const sign = number < 0 ? "-" : "";
+  if (absolute >= 1_000_000_000) return `${sign}RM${(absolute / 1_000_000_000).toFixed(2)}B`;
+  if (absolute >= 1_000_000) return `${sign}RM${(absolute / 1_000_000).toFixed(2)}M`;
+  if (absolute >= 1_000) return `${sign}RM${(absolute / 1_000).toFixed(1)}K`;
+  return `${sign}RM${absolute.toLocaleString("en-MY", { maximumFractionDigits: 0 })}`;
+}
+
+function formatPercent(value) {
+  return `${Number(value || 0).toFixed(1)}%`;
 }
 
 function renderAdminPortfolio() {
