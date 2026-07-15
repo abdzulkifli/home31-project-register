@@ -34,6 +34,14 @@ Deno.serve(async (request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  if (request.method === "GET") {
+    return jsonResponse({
+      ok: true,
+      function: "admin-create-user",
+      status: "reachable"
+    });
+  }
+
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
