@@ -1,8 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
 
 // Resolves automatically to the folder where this page is currently hosted.
 // This preserves a GitHub Pages repository path instead of redirecting only
