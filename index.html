@@ -3,14 +3,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="HOME31 Enterprise Management Platform V7">
-  <title>HOME31 Enterprise Management Platform V7.5</title>
+  <meta name="description" content="HOME31 Enterprise Management Platform V7.6 — senior-friendly accessible edition">
+  <meta name="theme-color" content="#061b2b">
+  <title>HOME31 Enterprise Management Platform V7.6</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+  <div id="display-settings" class="display-settings">
+    <button
+      id="display-settings-toggle"
+      class="display-settings-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="display-settings-panel"
+      title="Display size and readability settings"
+    >
+      <span class="display-settings-icon" aria-hidden="true">Aa</span>
+      <span class="display-settings-label">Display</span>
+    </button>
+
+    <section
+      id="display-settings-panel"
+      class="display-settings-panel hidden"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="display-settings-title"
+    >
+      <div class="display-settings-heading">
+        <div>
+          <span class="display-settings-kicker">READABILITY</span>
+          <h2 id="display-settings-title">Display Settings</h2>
+          <p>Choose a comfortable reading size. Your preference is remembered on this device.</p>
+        </div>
+        <button id="display-settings-close" class="display-settings-close" type="button" aria-label="Close display settings">×</button>
+      </div>
+
+      <div class="display-mode-grid" role="radiogroup" aria-label="Display size">
+        <button class="display-mode-card" type="button" data-display-size="standard" role="radio" aria-checked="false">
+          <span class="display-preview standard">Aa</span>
+          <strong>Standard</strong>
+          <small>Compact desktop view</small>
+        </button>
+        <button class="display-mode-card recommended" type="button" data-display-size="comfortable" role="radio" aria-checked="true">
+          <span class="display-recommended-label">Recommended</span>
+          <span class="display-preview comfortable">Aa</span>
+          <strong>Comfortable</strong>
+          <small>Best for daily reading</small>
+        </button>
+        <button class="display-mode-card" type="button" data-display-size="large" role="radio" aria-checked="false">
+          <span class="display-preview large">Aa</span>
+          <strong>Large</strong>
+          <small>Projector and senior review</small>
+        </button>
+      </div>
+
+      <label class="display-contrast-option">
+        <span>
+          <strong>High contrast</strong>
+          <small>Stronger text, borders and focus indicators</small>
+        </span>
+        <input id="display-high-contrast" type="checkbox" role="switch" aria-label="Use high contrast">
+      </label>
+
+      <div class="display-settings-footer">
+        <span id="display-settings-status" aria-live="polite">Comfortable display is active.</span>
+        <button id="display-settings-reset" type="button">Reset</button>
+      </div>
+    </section>
+  </div>
+
   <section id="auth-screen" class="auth-screen">
     <div class="auth-brand">
       <div class="auth-mark">H31</div>
@@ -126,7 +191,7 @@
 
       <div class="sidebar-footer">
         <button id="logout-button" class="sidebar-logout" type="button">Sign out</button>
-        <span>HOME31 Platform V7</span>
+        <span>HOME31 Platform V7.6</span>
       </div>
     </aside>
 

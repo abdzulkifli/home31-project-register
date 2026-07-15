@@ -1,7 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
@@ -42,6 +42,13 @@ const EXECUTIVE_COLORS = {
 let pillarMetric = "count";
 let selectedAdminYear = DEFAULT_ADMIN_YEAR;
 
+const DISPLAY_SETTINGS_KEY = "home31-display-settings-v1";
+const DISPLAY_MODES = ["standard", "comfortable", "large"];
+let currentDisplaySize = "comfortable";
+let highContrastEnabled = false;
+let tableEnhancementScheduled = false;
+let responsiveTableObserver = null;
+
 
 let currentUser = null;
 let currentProfile = null;
@@ -54,9 +61,11 @@ let currentInitiativeFormStep = 1;
 document.addEventListener("DOMContentLoaded", initialise);
 
 async function initialise() {
+  initialiseDisplaySettings();
   bindEvents();
   populatePillars();
   handleResetLink();
+  initialiseResponsiveTables();
 
   if (!configured) {
     $("#configuration-warning").classList.remove("hidden");
@@ -593,7 +602,7 @@ function executiveChartOptions() {
           usePointStyle: true,
           boxWidth: 9,
           padding: 15,
-          font: { size: 9 }
+          font: { size: 12 }
         }
       },
       tooltip: {
@@ -816,7 +825,7 @@ function renderAdminUserGovernance() {
         plugins: {
           legend: {
             position: "bottom",
-            labels: { color: EXECUTIVE_COLORS.text, usePointStyle: true, boxWidth: 8, font: { size: 8 } }
+            labels: { color: EXECUTIVE_COLORS.text, usePointStyle: true, boxWidth: 8, font: { size: 12 } }
           }
         }
       }
@@ -1730,6 +1739,224 @@ function renderAdminExceptions() {
 }
 function renderAdminExceptionCharts(data) {
   charts.adminExceptionRisk?.destroy();charts.adminExceptionHealth?.destroy();if(typeof Chart==="undefined")return;const risks=["Low","Medium","High","Extreme"];
-  charts.adminExceptionRisk=new Chart($("#admin-exception-risk-chart"),{type:"doughnut",data:{labels:risks,datasets:[{data:risks.map(r=>data.records.filter(p=>p.risk_level===r).length),backgroundColor:["#6ca69b","#7f99af","#d1ad63","#d26066"],borderColor:"#102f49",borderWidth:4,cutout:"62%"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:EXECUTIVE_COLORS.text,usePointStyle:true,boxWidth:8,font:{size:8}}}}}});
-  charts.adminExceptionHealth=new Chart($("#admin-exception-health-chart"),{type:"bar",data:{labels:["Risk","Low readiness","Overdue","HR","ICT","Evidence"],datasets:[{data:[data.risk.length,data.readiness.length,data.overdue.length,data.hrPending.length,data.ictPending.length,data.evidence.length],backgroundColor:["#d26066","#d1ad63","#b97859","#57999b","#7f99af","#6f86a0"],borderRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:EXECUTIVE_COLORS.text,font:{size:8}}},y:{beginAtZero:true,grid:{color:EXECUTIVE_COLORS.grid},ticks:{color:EXECUTIVE_COLORS.text,precision:0}}}}});
+  charts.adminExceptionRisk=new Chart($("#admin-exception-risk-chart"),{type:"doughnut",data:{labels:risks,datasets:[{data:risks.map(r=>data.records.filter(p=>p.risk_level===r).length),backgroundColor:["#6ca69b","#7f99af","#d1ad63","#d26066"],borderColor:"#102f49",borderWidth:4,cutout:"62%"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:EXECUTIVE_COLORS.text,usePointStyle:true,boxWidth:8,font: { size: 12 }}}}}});
+  charts.adminExceptionHealth=new Chart($("#admin-exception-health-chart"),{type:"bar",data:{labels:["Risk","Low readiness","Overdue","HR","ICT","Evidence"],datasets:[{data:[data.risk.length,data.readiness.length,data.overdue.length,data.hrPending.length,data.ictPending.length,data.evidence.length],backgroundColor:["#d26066","#d1ad63","#b97859","#57999b","#7f99af","#6f86a0"],borderRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:EXECUTIVE_COLORS.text,font: { size: 12 }}},y:{beginAtZero:true,grid:{color:EXECUTIVE_COLORS.grid},ticks:{color:EXECUTIVE_COLORS.text,precision:0}}}}});
+}
+
+
+/* ================================================================
+   V7.6 DISPLAY SETTINGS AND RESPONSIVE READABILITY
+   ================================================================ */
+
+function initialiseDisplaySettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DISPLAY_SETTINGS_KEY) || "{}");
+    if (DISPLAY_MODES.includes(saved.size)) currentDisplaySize = saved.size;
+    highContrastEnabled = Boolean(saved.highContrast);
+  } catch (_error) {
+    currentDisplaySize = "comfortable";
+    highContrastEnabled = false;
+  }
+
+  applyDisplaySettings(false);
+
+  $("#display-settings-toggle").addEventListener("click", toggleDisplaySettingsPanel);
+  $("#display-settings-close").addEventListener("click", closeDisplaySettingsPanel);
+  $("#display-settings-reset").addEventListener("click", resetDisplaySettings);
+  $("#display-high-contrast").addEventListener("change", event => {
+    highContrastEnabled = event.target.checked;
+    applyDisplaySettings();
+  });
+
+  $$("[data-display-size]").forEach(button => {
+    button.addEventListener("click", () => {
+      currentDisplaySize = button.dataset.displaySize;
+      applyDisplaySettings();
+    });
+  });
+
+  document.addEventListener("click", event => {
+    const settings = $("#display-settings");
+    if (settings && !settings.contains(event.target)) closeDisplaySettingsPanel();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeDisplaySettingsPanel();
+
+    if (event.altKey && event.shiftKey && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      toggleDisplaySettingsPanel();
+    }
+  });
+}
+
+function applyDisplaySettings(announce = true) {
+  document.documentElement.dataset.displaySize = currentDisplaySize;
+  document.documentElement.dataset.contrast = highContrastEnabled ? "high" : "normal";
+
+  $$("[data-display-size]").forEach(button => {
+    const active = button.dataset.displaySize === currentDisplaySize;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+
+  const contrastToggle = $("#display-high-contrast");
+  if (contrastToggle) contrastToggle.checked = highContrastEnabled;
+
+  const labels = {
+    standard: "Standard display",
+    comfortable: "Comfortable display",
+    large: "Large display"
+  };
+  const status = `${labels[currentDisplaySize]}${highContrastEnabled ? " with high contrast" : ""} is active.`;
+  const statusElement = $("#display-settings-status");
+  if (statusElement) statusElement.textContent = status;
+
+  try {
+    localStorage.setItem(
+      DISPLAY_SETTINGS_KEY,
+      JSON.stringify({
+        size: currentDisplaySize,
+        highContrast: highContrastEnabled
+      })
+    );
+  } catch (_error) {
+    // The interface still works when local storage is unavailable.
+  }
+
+  updateChartReadability();
+  scheduleResponsiveTableEnhancement();
+
+  if (announce && typeof showToast === "function") {
+    showToast(status);
+  }
+}
+
+function resetDisplaySettings() {
+  currentDisplaySize = "comfortable";
+  highContrastEnabled = false;
+  applyDisplaySettings();
+}
+
+function toggleDisplaySettingsPanel() {
+  const panel = $("#display-settings-panel");
+  const toggle = $("#display-settings-toggle");
+  const opening = panel.classList.contains("hidden");
+
+  panel.classList.toggle("hidden", !opening);
+  toggle.setAttribute("aria-expanded", String(opening));
+
+  if (opening) {
+    window.setTimeout(() => {
+      const active = $(`[data-display-size="${currentDisplaySize}"]`);
+      active?.focus();
+    }, 20);
+  }
+}
+
+function closeDisplaySettingsPanel() {
+  const panel = $("#display-settings-panel");
+  const toggle = $("#display-settings-toggle");
+  if (!panel || panel.classList.contains("hidden")) return;
+
+  panel.classList.add("hidden");
+  toggle?.setAttribute("aria-expanded", "false");
+}
+
+function initialiseResponsiveTables() {
+  scheduleResponsiveTableEnhancement();
+
+  const platform = $("#platform");
+  if (!platform || responsiveTableObserver) return;
+
+  responsiveTableObserver = new MutationObserver(() => {
+    scheduleResponsiveTableEnhancement();
+  });
+
+  responsiveTableObserver.observe(platform, {
+    childList: true,
+    subtree: true
+  });
+}
+
+function scheduleResponsiveTableEnhancement() {
+  if (tableEnhancementScheduled) return;
+  tableEnhancementScheduled = true;
+
+  window.requestAnimationFrame(() => {
+    tableEnhancementScheduled = false;
+    enhanceResponsiveTables();
+  });
+}
+
+function enhanceResponsiveTables() {
+  $$("table").forEach(table => {
+    table.classList.add("responsive-table");
+
+    const headers = [...table.querySelectorAll("thead th")]
+      .map(header => header.textContent.trim());
+
+    [...table.querySelectorAll("tbody tr")].forEach(row => {
+      [...row.children].forEach((cell, index) => {
+        if (!cell.dataset.label) {
+          cell.dataset.label = headers[index] || `Field ${index + 1}`;
+        }
+      });
+    });
+  });
+}
+
+function chartFontSize() {
+  if (currentDisplaySize === "large") return 15;
+  if (currentDisplaySize === "standard") return 11;
+  return 13;
+}
+
+function updateChartReadability() {
+  if (typeof Chart === "undefined") return;
+
+  const size = chartFontSize();
+  Chart.defaults.font.family =
+    '"IBM Plex Sans", "Aptos", "Segoe UI Variable", "Segoe UI", Arial, sans-serif';
+  Chart.defaults.font.size = size;
+  Chart.defaults.color = highContrastEnabled ? "#eef6fa" : Chart.defaults.color;
+
+  Object.values(charts).forEach(chart => {
+    if (!chart?.options) return;
+
+    const legendLabels = chart.options.plugins?.legend?.labels;
+    if (legendLabels) {
+      legendLabels.font = {
+        ...(typeof legendLabels.font === "object" ? legendLabels.font : {}),
+        family: Chart.defaults.font.family,
+        size
+      };
+      legendLabels.color = highContrastEnabled ? "#eef6fa" : legendLabels.color;
+      legendLabels.padding = Math.max(Number(legendLabels.padding || 12), 14);
+    }
+
+    Object.values(chart.options.scales || {}).forEach(scale => {
+      if (scale?.ticks) {
+        scale.ticks.font = {
+          ...(typeof scale.ticks.font === "object" ? scale.ticks.font : {}),
+          family: Chart.defaults.font.family,
+          size
+        };
+        if (highContrastEnabled) scale.ticks.color = "#eef6fa";
+      }
+
+      if (scale?.title) {
+        scale.title.font = {
+          ...(typeof scale.title.font === "object" ? scale.title.font : {}),
+          family: Chart.defaults.font.family,
+          size: size + 1,
+          weight: "600"
+        };
+        if (highContrastEnabled) scale.title.color = "#eef6fa";
+      }
+    });
+
+    chart.resize();
+    chart.update("none");
+  });
 }
