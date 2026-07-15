@@ -2,864 +2,390 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Simplified HOME31 initiative submission and portfolio monitoring workspace.">
-  <title>HOME31 Enterprise Command Centre V5</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="HOME31 Enterprise Management Platform V7">
+  <title>HOME31 Enterprise Management Platform V7</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
-
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="#home" aria-label="HOME31 home">
-        <span class="brand-mark">H31</span>
-        <span>
-          <strong>HOME31 Initiative Register</strong>
-          <small>Role-based project governance workspace</small>
-        </span>
-      </a>
-
-      <nav class="nav" aria-label="Main navigation">
-        <button type="button" data-scroll="home">Home</button>
-        <button id="nav-new-initiative" class="role-nav hidden" type="button" data-scroll="workspace">New Initiative</button>
-        <button id="nav-my-portfolio" class="role-nav hidden" type="button" data-scroll="portfolio">My Portfolio</button>
-        <button id="nav-admin-dashboard" class="role-nav hidden" type="button" data-scroll="admin-dashboard">Admin Dashboard</button>
-      </nav>
-
-      <div class="top-actions">
-        <span id="role-badge" class="header-role hidden"></span>
-        <span id="user-email" class="user-email hidden"></span>
-        <button id="logout-button" class="button secondary small hidden" type="button">Log out</button>
-        <button id="menu-button" class="menu-button" type="button" aria-label="Open navigation">☰</button>
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-brand">
+      <div class="auth-mark">H31</div>
+      <span class="eyebrow light">LPPSA • HOME31 2027–2031</span>
+      <h1>Enterprise Management Platform</h1>
+      <p>One integrated workspace for strategy, initiatives, readiness, people collaboration, risk and management oversight.</p>
+      <div class="auth-features">
+        <article><strong>Secure access</strong><span>Role-based dashboards and forced first-login password change.</span></article>
+        <article><strong>Connected execution</strong><span>Strategy, initiatives, readiness, HR and risks in one view.</span></article>
+        <article><strong>Management visibility</strong><span>Interactive portfolio analytics and exception monitoring.</span></article>
       </div>
     </div>
-  </header>
 
-  <main id="main" class="page">
-    <section id="home" class="hero">
-      <div class="hero-copy">
-        <span class="eyebrow">LPPSA • Corporate Planning & Strategy</span>
-        <h1>Capture, align and monitor every HOME31 initiative.</h1>
-        <p>
-          A simplified workspace for initiative owners to submit essential project
-          information, complete a comprehensive readiness assessment and place the
-          initiative into a management portfolio.
-        </p>
-        <div class="hero-actions">
-          <button id="start-button" class="button gold" type="button">Start New Initiative</button>
-          <button id="demo-button" class="button light" type="button">Load Sample</button>
-          <button id="admin-dashboard-button" class="button gold hidden" type="button">Open Super Admin Dashboard</button>
-        </div>
+    <div class="auth-card-wrap">
+      <div id="configuration-warning" class="notice warning hidden">
+        Configure <code>SUPABASE_URL</code> and <code>SUPABASE_PUBLISHABLE_KEY</code> in <code>app.js</code>.
       </div>
 
-      <aside class="hero-guide">
-        <h2>Only three steps</h2>
-        <ol>
-          <li><span>1</span> Enter project and strategic information.</li>
-          <li><span>2</span> Assess strategy, value, controls, delivery and people readiness.</li>
-          <li><span>3</span> Review and save to the portfolio.</li>
-        </ol>
-      </aside>
+      <form id="login-form" class="auth-card">
+        <span class="section-label">Secure login</span>
+        <h2>Welcome back</h2>
+        <p>Sign in using the email and temporary or permanent password assigned to your account.</p>
 
-      <div class="hero-stats" aria-label="Application highlights">
-        <article><strong>3</strong><span>guided steps</span></article>
-        <article><strong>1</strong><span>project record</span></article>
-        <article><strong>5</strong><span>HOME31 pillars</span></article>
-        <article><strong>Live</strong><span>portfolio view</span></article>
-      </div>
-    </section>
+        <label class="field">
+          <span>Email address</span>
+          <input id="login-email" type="email" autocomplete="email" required>
+        </label>
 
-    <section id="configuration-warning" class="notice warning hidden">
-      <strong>Configuration required:</strong>
-      Open <code>app.js</code> and replace the Supabase URL and publishable key.
-    </section>
+        <label class="field">
+          <span>Password</span>
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
 
-    <section id="auth-section" class="panel auth-panel">
-      <div class="panel-heading">
+        <button class="button gold wide" type="submit">Sign in</button>
+        <button id="forgot-password-button" class="text-button" type="button">Forgot password?</button>
+        <div id="login-message" class="notice blue hidden"></div>
+      </form>
+
+      <form id="forgot-password-form" class="auth-card hidden">
+        <span class="section-label">Account recovery</span>
+        <h2>Reset password</h2>
+        <p>Enter your registered email. Supabase will send a secure reset link.</p>
+        <label class="field">
+          <span>Email address</span>
+          <input id="forgot-email" type="email" required>
+        </label>
+        <button class="button gold wide" type="submit">Send reset link</button>
+        <button id="back-to-login-button" class="text-button" type="button">Back to sign in</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="force-password-screen" class="force-password-screen hidden">
+    <div class="password-card">
+      <div class="password-icon">🔐</div>
+      <span class="section-label">First login security</span>
+      <h1>Change your temporary password</h1>
+      <p>You must create a new password before accessing the HOME31 dashboard.</p>
+
+      <form id="force-password-form" class="password-form">
+        <label class="field">
+          <span>New password</span>
+          <input id="force-new-password" type="password" autocomplete="new-password" minlength="10" required>
+          <small>Minimum 10 characters. Use a mix of uppercase, lowercase, numbers and symbols.</small>
+        </label>
+
+        <label class="field">
+          <span>Confirm new password</span>
+          <input id="force-confirm-password" type="password" autocomplete="new-password" minlength="10" required>
+        </label>
+
+        <div id="password-strength" class="password-strength"><span></span></div>
+        <button class="button gold wide" type="submit">Change Password & Continue</button>
+      </form>
+
+      <button id="force-logout-button" class="text-button" type="button">Sign out</button>
+    </div>
+  </section>
+
+  <div id="platform" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">H31</div>
         <div>
-          <span class="section-label">Secure access</span>
-          <h2>Sign in to your assigned dashboard</h2>
-          <p>Normal users manage their own initiatives. Super admins receive an organisation-wide portfolio and user-management dashboard.</p>
+          <strong>HOME31</strong>
+          <span>Enterprise Management Platform</span>
         </div>
       </div>
 
-      <div class="auth-grid">
-        <form id="login-form" class="form-card">
-          <h3>Sign in</h3>
-          <label>
-            Email
-            <input id="login-email" type="email" autocomplete="email" required>
-          </label>
-          <label>
-            Password
-            <input id="login-password" type="password" autocomplete="current-password" minlength="6" required>
-          </label>
-          <button class="button" type="submit">Sign in</button>
-        </form>
-
-        <form id="signup-form" class="form-card">
-          <h3>Create normal-user account</h3>
-          <div class="form-card-grid">
-            <label>
-              Full name
-              <input id="signup-full-name" type="text" autocomplete="name" maxlength="120" required>
-            </label>
-            <label>
-              Department
-              <input id="signup-department" type="text" maxlength="120" required>
-            </label>
-          </div>
-          <label>
-            Email
-            <input id="signup-email" type="email" autocomplete="email" required>
-          </label>
-          <label>
-            Password
-            <input id="signup-password" type="password" autocomplete="new-password" minlength="6" required>
-          </label>
-          <button class="button secondary" type="submit">Register</button>
-          <button id="resend-confirmation-button" class="button light" type="button">Resend confirmation email</button>
-          <p class="field-note">
-            New registrations are assigned the <b>Normal User</b> role.
-            Confirmation links are single-use. Use the resend button if a link has expired.
-          </p>
-        </form>
+      <div class="sidebar-user">
+        <div id="sidebar-avatar" class="avatar">U</div>
+        <div>
+          <strong id="sidebar-name">User</strong>
+          <span id="sidebar-role">Normal User</span>
+        </div>
       </div>
-    </section>
 
-    <section id="user-dashboard" class="hidden">
-      <section id="workspace" class="workspace">
-        <aside class="step-panel">
-          <div class="step-panel-heading">
-            <span class="section-label">Initiative journey</span>
-            <h2>Submission progress</h2>
+      <nav id="user-nav" class="module-nav" aria-label="User navigation">
+        <button class="nav-item active" data-module="user-home"><span>⌂</span><b>My Dashboard</b></button>
+        <button class="nav-item" data-module="my-initiatives"><span>▤</span><b>My Initiatives</b></button>
+        <button class="nav-item" data-module="readiness"><span>✓</span><b>Readiness & HR</b></button>
+        <button class="nav-item" data-module="account"><span>⚙</span><b>My Account</b></button>
+      </nav>
+
+      <nav id="admin-nav" class="module-nav hidden" aria-label="Super admin navigation">
+        <div class="nav-separator">SUPER ADMIN</div>
+        <button class="nav-item" data-module="admin-overview"><span>◫</span><b>Executive Overview</b></button>
+        <button class="nav-item" data-module="admin-portfolio"><span>▦</span><b>Enterprise Portfolio</b></button>
+        <button class="nav-item" data-module="admin-users"><span>♙</span><b>User Administration</b></button>
+        <button class="nav-item" data-module="admin-exceptions"><span>!</span><b>Risks & Exceptions</b></button>
+        <button class="nav-item" data-module="admin-system"><span>⚙</span><b>System & Future</b></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="logout-button" class="sidebar-logout" type="button">Sign out</button>
+        <span>HOME31 Platform V7</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="menu-toggle" class="icon-button" type="button">☰</button>
+          <div>
+            <span class="eyebrow">LPPSA • HOME31 2027–2031</span>
+            <h1 id="page-title">My Dashboard</h1>
           </div>
+        </div>
 
-          <button class="step-link active" type="button" data-step="1">
-            <span class="step-number">1</span>
-            <span><strong>Project Profile</strong><small>What, why and who</small></span>
-            <span id="step-state-1" class="step-state">Current</span>
-          </button>
+        <div class="topbar-actions">
+          <button id="top-new-initiative" class="button gold" type="button">+ New Initiative</button>
+          <button id="top-account-button" class="icon-button" type="button">👤</button>
+        </div>
+      </header>
 
-          <button class="step-link" type="button" data-step="2">
-            <span class="step-number">2</span>
-            <span><strong>Readiness Assessment</strong><small>Governance and people readiness</small></span>
-            <span id="step-state-2" class="step-state">Pending</span>
-          </button>
-
-          <button class="step-link" type="button" data-step="3">
-            <span class="step-number">3</span>
-            <span><strong>Review & Submit</strong><small>Save to portfolio</small></span>
-            <span id="step-state-3" class="step-state">Pending</span>
-          </button>
-
-          <div class="journey-progress">
-            <div><span id="journey-label">Step 1 of 3</span><strong id="journey-percent">33%</strong></div>
-            <div class="progress-track"><span id="journey-bar" style="width:33%"></span></div>
-          </div>
-
-          <div class="side-note">
-            This version keeps the user journey simple while retaining a comprehensive readiness assessment, including conditional HR collaboration requirements.
-          </div>
-        </aside>
-
-        <div class="step-content">
-          <section id="step-1" class="panel step-screen active">
-            <div class="panel-heading">
-              <div>
-                <span class="section-label">Step 1</span>
-                <h2>Project Profile & Strategic Alignment</h2>
-                <p>Enter the essential information once. It will be used in the project portfolio.</p>
-              </div>
-              <span class="badge burgundy">Initiative owner</span>
+      <section class="content">
+        <section id="module-user-home" class="module active">
+          <div class="hero">
+            <div>
+              <span id="welcome-role" class="hero-tag">Normal User</span>
+              <h2 id="welcome-title">Welcome to HOME31.</h2>
+              <p id="welcome-copy">Submit initiatives, complete readiness requirements and monitor your project portfolio.</p>
             </div>
+            <button class="button gold" type="button" data-open-initiative>+ Create Initiative</button>
+          </div>
 
-            <form id="project-form" class="form-grid">
-              <input id="project-id" type="hidden">
+          <div class="kpi-grid four">
+            <article><span>My initiatives</span><strong id="user-kpi-total">0</strong><small>Total records under your account</small></article>
+            <article><span>In progress</span><strong id="user-kpi-progress">0</strong><small>Currently executing</small></article>
+            <article><span>At risk</span><strong id="user-kpi-risk">0</strong><small>Require attention</small></article>
+            <article><span>Average progress</span><strong id="user-kpi-average">0%</strong><small>Across your portfolio</small></article>
+          </div>
 
-              <div id="admin-record-owner-field" class="field full hidden admin-owner-field">
-                <label for="admin-record-owner">Record owner / submit on behalf of <span>*</span></label>
-                <select id="admin-record-owner">
-                  <option value="">Use my super-admin account</option>
-                </select>
-                <small>Select a normal user when the super admin is entering the initiative on that user’s behalf.</small>
+          <div class="dashboard-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading"><div><span class="section-label">My delivery</span><h3>Status distribution</h3></div></div>
+              <div class="chart-shell"><canvas id="user-status-chart"></canvas></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading"><div><span class="section-label">Immediate action</span><h3>Readiness gaps</h3></div></div>
+              <div id="user-gap-list" class="future-list"></div>
+            </article>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div><span class="section-label">Recent portfolio</span><h3>My latest initiatives</h3></div>
+              <button class="button secondary small" data-jump="my-initiatives" type="button">Open all</button>
+            </div>
+            <div class="table-wrap">
+              <table id="user-recent-table">
+                <thead><tr><th>Initiative</th><th>Pillar</th><th>Status</th><th>Readiness</th><th>Progress</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="module-my-initiatives" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Personal portfolio</span><h2>My Initiatives</h2><p>Create, update and monitor initiatives assigned to your account.</p></div>
+            <button class="button gold" type="button" data-open-initiative>+ New Initiative</button>
+          </div>
+
+          <div class="filter-bar">
+            <input id="user-search" type="search" placeholder="Search initiative">
+            <select id="user-status-filter">
+              <option value="">All status</option>
+              <option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option>
+            </select>
+            <button id="user-clear-filters" class="button light small" type="button">Clear</button>
+          </div>
+
+          <div id="user-initiative-list" class="initiative-card-list"></div>
+        </section>
+
+        <section id="module-readiness" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Governance and people readiness</span><h2>Readiness & HR Collaboration</h2><p>Review readiness scores, gaps and initiatives requiring HR involvement.</p></div>
+          </div>
+
+          <div class="kpi-grid four">
+            <article><span>Average readiness</span><strong id="readiness-average">0%</strong><small>Across your initiatives</small></article>
+            <article><span>Below 70%</span><strong id="readiness-low">0</strong><small>Need corrective action</small></article>
+            <article><span>HR required</span><strong id="readiness-hr">0</strong><small>People collaboration needed</small></article>
+            <article><span>High risk</span><strong id="readiness-risk">0</strong><small>Escalation or treatment</small></article>
+          </div>
+
+          <div id="readiness-list" class="readiness-list"></div>
+        </section>
+
+        <section id="module-account" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Personal settings</span><h2>My Account</h2><p>Update your profile and change your password at any time.</p></div>
+          </div>
+
+          <div class="account-grid">
+            <form id="profile-form" class="panel">
+              <div class="panel-heading"><h3>Profile Information</h3></div>
+              <label class="field"><span>Full name</span><input id="account-full-name" required></label>
+              <label class="field"><span>Email</span><input id="account-email" type="email" disabled></label>
+              <label class="field"><span>Department</span><input id="account-department"></label>
+              <button class="button gold" type="submit">Save Profile</button>
+            </form>
+
+            <form id="change-password-form" class="panel">
+              <div class="panel-heading"><h3>Change Password</h3></div>
+              <label class="field"><span>New password</span><input id="account-new-password" type="password" minlength="10" required></label>
+              <label class="field"><span>Confirm password</span><input id="account-confirm-password" type="password" minlength="10" required></label>
+              <button class="button gold" type="submit">Update Password</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="module-admin-overview" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Enterprise command centre</span><h2>Executive Overview</h2><p>Organisation-wide portfolio, readiness, risk and HR collaboration.</p></div>
+          </div>
+
+          <div class="kpi-grid six">
+            <article><span>Total initiatives</span><strong id="admin-kpi-total">0</strong><small>Enterprise portfolio</small></article>
+            <article><span>Portfolio health</span><strong id="admin-kpi-health">0%</strong><small>Average readiness</small></article>
+            <article><span>At risk</span><strong id="admin-kpi-risk">0</strong><small>High risk or at-risk status</small></article>
+            <article><span>HR dependent</span><strong id="admin-kpi-hr">0</strong><small>People collaboration</small></article>
+            <article><span>Overdue</span><strong id="admin-kpi-overdue">0</strong><small>Past target date</small></article>
+            <article><span>Users</span><strong id="admin-kpi-users">0</strong><small>Registered profiles</small></article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel chart-panel"><div class="panel-heading"><h3>Initiatives by status</h3></div><div class="chart-shell"><canvas id="admin-status-chart"></canvas></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><h3>Strategic pillar coverage</h3></div><div class="chart-shell"><canvas id="admin-pillar-chart"></canvas></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><h3>Risk distribution</h3></div><div class="chart-shell"><canvas id="admin-risk-chart"></canvas></div></article>
+            <article class="panel chart-panel"><div class="panel-heading"><h3>Department readiness</h3></div><div class="chart-shell"><canvas id="admin-department-chart"></canvas></div></article>
+          </div>
+        </section>
+
+        <section id="module-admin-portfolio" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Enterprise portfolio</span><h2>All Initiatives</h2><p>Search, filter, edit and monitor every initiative.</p></div>
+            <button class="button gold" type="button" data-open-initiative>+ Key In Initiative</button>
+          </div>
+
+          <div class="filter-bar admin-filter">
+            <input id="admin-search" type="search" placeholder="Search project, owner or department">
+            <select id="admin-status-filter"><option value="">All status</option><option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option></select>
+            <select id="admin-pillar-filter"><option value="">All pillars</option></select>
+            <select id="admin-risk-filter"><option value="">All risk</option><option>Low</option><option>Medium</option><option>High</option><option>Extreme</option></select>
+            <button id="admin-clear-filters" class="button light small" type="button">Clear</button>
+          </div>
+
+          <div class="panel">
+            <div class="table-wrap">
+              <table id="admin-portfolio-table">
+                <thead><tr><th>Initiative</th><th>Owner</th><th>Department</th><th>Pillar</th><th>Status</th><th>Risk</th><th>Readiness</th><th>Progress</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="module-admin-users" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Access administration</span><h2>User Administration</h2><p>Create active users with temporary passwords and manage roles.</p></div>
+          </div>
+
+          <div class="admin-user-layout">
+            <form id="admin-create-user-form" class="panel">
+              <div class="panel-heading"><h3>Create Active Normal User</h3></div>
+              <div id="user-service-warning" class="notice blue">
+                Requires the deployed Supabase Edge Function <code>admin-create-user</code>.
               </div>
-
-              <div class="field full">
-                <label for="initiative-name">Initiative name <span>*</span></label>
-                <input id="initiative-name" type="text" maxlength="150" placeholder="e.g. AI-Driven Document Verification" required>
-                <small>Use a clear name describing the intended business change.</small>
-              </div>
-
-              <div class="field">
-                <label for="department">Department <span>*</span></label>
-                <input id="department" type="text" maxlength="120" placeholder="e.g. Corporate Planning & Strategy" required>
-              </div>
-
-              <div class="field">
-                <label for="strategic-pillar">Primary HOME31 pillar <span>*</span></label>
-                <select id="strategic-pillar" required>
-                  <option value="">Select a pillar</option>
-                  <option>Financial Sustainability</option>
-                  <option>Digital & Data Transformation</option>
-                  <option>Governance Stewardship</option>
-                  <option>Customer Experience Transformation</option>
-                  <option>Workforce & Leadership Transformation</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="executive-sponsor">Executive sponsor</label>
-                <input id="executive-sponsor" type="text" maxlength="120" placeholder="Role or committee">
-              </div>
-
-              <div class="field">
-                <label for="accountable-owner">Accountable owner <span>*</span></label>
-                <input id="accountable-owner" type="text" maxlength="120" placeholder="Business owner" required>
-              </div>
-
-              <div class="field">
-                <label for="delivery-lead">Delivery lead</label>
-                <input id="delivery-lead" type="text" maxlength="120" placeholder="Project or programme lead">
-              </div>
-
-              <div class="field">
-                <label for="status">Status <span>*</span></label>
-                <select id="status" required>
-                  <option>Planning</option>
-                  <option>In Progress</option>
-                  <option>At Risk</option>
-                  <option>On Hold</option>
-                  <option>Completed</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="current-phase">Current phase <span>*</span></label>
-                <select id="current-phase" required>
-                  <option>Idea / Intake</option>
-                  <option>Strategic Assessment</option>
-                  <option>Business Case</option>
-                  <option>Design & Control</option>
-                  <option>Delivery</option>
-                  <option>Go-Live Readiness</option>
-                  <option>Benefits Review</option>
-                  <option>Closure</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="progress">Progress (%) <span>*</span></label>
-                <input id="progress" type="number" min="0" max="100" value="0" required>
-              </div>
-
-              <div class="field">
-                <label for="target-date">Target completion</label>
-                <input id="target-date" type="date">
-              </div>
-
-              <div class="field full">
-                <label for="problem-opportunity">Problem or opportunity <span>*</span></label>
-                <textarea id="problem-opportunity" rows="4" maxlength="2000" placeholder="What problem are we solving, for whom, and why now?" required></textarea>
-              </div>
-
-              <div class="field full">
-                <label for="enterprise-outcome">Expected enterprise outcome <span>*</span></label>
-                <textarea id="enterprise-outcome" rows="3" maxlength="1500" placeholder="What should improve for LPPSA, customers or employees?" required></textarea>
-              </div>
-
-              <div class="field full">
-                <label for="value-target">Value measure and target</label>
-                <input id="value-target" type="text" maxlength="500" placeholder="Current baseline → target → achievement date">
-              </div>
-
-              <div class="field full">
-                <label for="next-action">Next action or milestone</label>
-                <textarea id="next-action" rows="2" maxlength="1000" placeholder="What is the next important action?"></textarea>
+              <label class="field"><span>Full name</span><input id="admin-user-name" required></label>
+              <label class="field"><span>Department</span><input id="admin-user-department" required></label>
+              <label class="field"><span>Email</span><input id="admin-user-email" type="email" required></label>
+              <label class="field"><span>Temporary password</span><input id="admin-user-password" type="text" minlength="10" required></label>
+              <div class="button-row">
+                <button id="generate-password-button" class="button light" type="button">Generate Password</button>
+                <button class="button gold" type="submit">Create User</button>
               </div>
             </form>
 
-            <div class="actions">
-              <button id="step-1-next" class="button" type="button">Save Draft & Continue →</button>
-            </div>
-          </section>
-
-          <section id="step-2" class="panel step-screen">
-            <div class="panel-heading">
-              <div>
-                <span class="section-label">Step 2</span>
-                <h2>Comprehensive Readiness Assessment</h2>
-                <p>Assess the initiative across strategy, value, controls, delivery and people. Tick an item only when evidence or a confirmed management decision exists.</p>
+            <div class="panel">
+              <div class="panel-heading">
+                <div><h3>User Directory</h3><p class="muted">Promote trusted users only.</p></div>
+                <button id="refresh-admin-data" class="button secondary small" type="button">Refresh</button>
               </div>
-              <span class="badge gold-badge">Decision support</span>
+              <div id="admin-user-list" class="admin-user-list"></div>
             </div>
+          </div>
+        </section>
 
-            <div class="readiness-intro">
-              <label class="field">
-                <span class="field-title">Overall residual risk</span>
-                <select id="risk-level">
-                  <option>Low</option>
-                  <option selected>Medium</option>
-                  <option>High</option>
-                  <option>Extreme</option>
-                </select>
-                <small>Use the highest credible residual exposure after current controls.</small>
-              </label>
+        <section id="module-admin-exceptions" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Management by exception</span><h2>Risks & Exceptions</h2><p>High-risk, overdue, low-readiness and HR-dependent initiatives.</p></div>
+          </div>
 
-              <label class="field">
-                <span class="field-title">Does the initiative require HR collaboration?</span>
-                <select id="hr-collaboration-status">
-                  <option>Not required</option>
-                  <option>Required</option>
-                  <option>To be confirmed</option>
-                </select>
-                <small>Select Required when roles, workforce, skills, policy, performance or employee adoption may change.</small>
-              </label>
+          <div class="exception-lanes">
+            <article><div class="lane-heading"><span>High / Extreme Risk</span><strong id="admin-exception-risk-count">0</strong></div><div id="admin-exception-risk-list" class="future-list compact"></div></article>
+            <article><div class="lane-heading"><span>Below 70% Readiness</span><strong id="admin-exception-readiness-count">0</strong></div><div id="admin-exception-readiness-list" class="future-list compact"></div></article>
+            <article><div class="lane-heading"><span>Overdue Active Projects</span><strong id="admin-exception-overdue-count">0</strong></div><div id="admin-exception-overdue-list" class="future-list compact"></div></article>
+          </div>
+        </section>
 
-              <div class="readiness-score">
-                <span>Overall readiness score</span>
-                <strong id="readiness-score">0%</strong>
-                <div class="progress-track"><span id="readiness-bar" style="width:0%"></span></div>
-                <b id="readiness-recommendation">Not assessed</b>
-              </div>
-            </div>
+        <section id="module-admin-system" class="module">
+          <div class="module-heading">
+            <div><span class="section-label">Architecture roadmap</span><h2>System & Future</h2><p>Planned production modules and enterprise controls.</p></div>
+          </div>
 
-            <div class="category-summary" aria-label="Readiness category scores">
-              <article><span>Strategy & governance</span><strong id="score-strategy">0%</strong></article>
-              <article><span>Value & funding</span><strong id="score-value">0%</strong></article>
-              <article><span>Risk & controls</span><strong id="score-control">0%</strong></article>
-              <article><span>Delivery & change</span><strong id="score-delivery">0%</strong></article>
-              <article id="score-hr-card" class="hidden"><span>HR & people</span><strong id="score-hr">0%</strong></article>
-            </div>
-
-            <div class="readiness-groups">
-              <section class="readiness-group">
-                <div class="readiness-group-head">
-                  <span class="group-number">A</span>
-                  <div><h3>Strategy & Governance</h3><p>Confirm strategic fit, accountable ownership and delivery boundaries.</p></div>
-                </div>
-                <div class="check-grid">
-                  <label class="check-card"><input id="check-strategy" type="checkbox"><span><strong>HOME31 alignment is explicit</strong><small>The initiative has a primary pillar, enterprise outcome and clear strategic reason.</small></span></label>
-                  <label class="check-card"><input id="check-owner" type="checkbox"><span><strong>Ownership and decision rights are confirmed</strong><small>Sponsor, accountable owner, delivery lead and approval route are understood.</small></span></label>
-                  <label class="check-card"><input id="check-scope" type="checkbox"><span><strong>Scope, dependencies and success boundaries are defined</strong><small>Key inclusions, exclusions, interfaces and dependencies are visible.</small></span></label>
-                </div>
-              </section>
-
-              <section class="readiness-group">
-                <div class="readiness-group-head">
-                  <span class="group-number">B</span>
-                  <div><h3>Value & Funding</h3><p>Confirm the initiative has a credible value case and affordable delivery path.</p></div>
-                </div>
-                <div class="check-grid">
-                  <label class="check-card"><input id="check-value-case" type="checkbox"><span><strong>Business need and options are supported</strong><small>The problem, preferred option, assumptions and expected public or enterprise value are documented.</small></span></label>
-                  <label class="check-card"><input id="check-kpi" type="checkbox"><span><strong>Baseline, target and benefits ownership are defined</strong><small>At least one measurable outcome has a baseline, target, date, owner and data source.</small></span></label>
-                  <label class="check-card"><input id="check-budget" type="checkbox"><span><strong>Funding and total cost view are available</strong><small>Funding source, operating impact, internal effort and material lifecycle costs are understood.</small></span></label>
-                </div>
-              </section>
-
-              <section class="readiness-group">
-                <div class="readiness-group-head">
-                  <span class="group-number">C</span>
-                  <div><h3>Risk & Controls</h3><p>Confirm material risks and specialist control requirements have been considered early.</p></div>
-                </div>
-                <div class="check-grid">
-                  <label class="check-card"><input id="check-risk" type="checkbox"><span><strong>Risk, compliance and policy review is completed</strong><small>Material legal, policy, operational, financial and reputational exposures are recorded with owners.</small></span></label>
-                  <label class="check-card"><input id="check-data" type="checkbox"><span><strong>Architecture, data, privacy, cyber and resilience impacts are reviewed</strong><small>Relevant technical and information controls are considered before solution commitment.</small></span></label>
-                  <label class="check-card"><input id="check-procurement" type="checkbox"><span><strong>Procurement and vendor implications are understood</strong><small>Procurement route, vendor dependency, contract ownership and integrity requirements are visible or confirmed not applicable.</small></span></label>
-                </div>
-              </section>
-
-              <section class="readiness-group">
-                <div class="readiness-group-head">
-                  <span class="group-number">D</span>
-                  <div><h3>Delivery & Change</h3><p>Confirm the initiative can be delivered, adopted and sustained in operations.</p></div>
-                </div>
-                <div class="check-grid">
-                  <label class="check-card"><input id="check-delivery" type="checkbox"><span><strong>Delivery plan, resources and milestones are credible</strong><small>Capacity, timeline, dependencies, critical milestones and escalation arrangements are visible.</small></span></label>
-                  <label class="check-card"><input id="check-operations" type="checkbox"><span><strong>Operational readiness and handover are considered</strong><small>Processes, SOPs, support, service ownership, continuity and post-implementation responsibilities are planned.</small></span></label>
-                  <label class="check-card"><input id="check-change" type="checkbox"><span><strong>Stakeholder, communication and adoption plan is defined</strong><small>Affected users, engagement, communication, training and resistance risks are understood.</small></span></label>
-                </div>
-              </section>
-            </div>
-
-            <section id="hr-collaboration-panel" class="hr-panel hidden">
-              <div class="hr-panel-head">
-                <div>
-                  <span class="section-label">Conditional HR collaboration</span>
-                  <h3>HR & People Readiness</h3>
-                  <p>Complete this section when the initiative changes organisation structure, workforce capacity, job roles, skills, performance measures, policies or employee experience.</p>
-                </div>
-                <span class="badge burgundy">HR collaboration</span>
-              </div>
-
-              <div class="form-grid hr-fields">
-                <div class="field">
-                  <label for="hr-engagement-stage">HR engagement stage</label>
-                  <select id="hr-engagement-stage">
-                    <option>Not started</option>
-                    <option>Initial discussion</option>
-                    <option>HR representative assigned</option>
-                    <option>People plan agreed</option>
-                    <option>Ongoing implementation</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="hr-representative">HR representative / focal person</label>
-                  <input id="hr-representative" type="text" maxlength="150" placeholder="Name, role or HR unit">
-                </div>
-                <div class="field full">
-                  <label for="hr-impact-summary">People and workforce impact summary</label>
-                  <textarea id="hr-impact-summary" rows="3" maxlength="1800" placeholder="Describe affected roles, headcount, structure, workload, skills, location, policy or employee experience."></textarea>
-                </div>
-              </div>
-
-              <div class="collaboration-area">
-                <h4>HR collaboration areas</h4>
-                <div class="area-grid">
-                  <label><input type="checkbox" name="hr-area" value="Organisation design & workforce planning"> Organisation design & workforce planning</label>
-                  <label><input type="checkbox" name="hr-area" value="Role profiles & job descriptions"> Role profiles & job descriptions</label>
-                  <label><input type="checkbox" name="hr-area" value="Recruitment, redeployment or succession"> Recruitment, redeployment or succession</label>
-                  <label><input type="checkbox" name="hr-area" value="Skills, training & capability"> Skills, training & capability</label>
-                  <label><input type="checkbox" name="hr-area" value="Performance & KPI alignment"> Performance & KPI alignment</label>
-                  <label><input type="checkbox" name="hr-area" value="Policy, employee relations or wellbeing"> Policy, employee relations or wellbeing</label>
-                  <label><input type="checkbox" name="hr-area" value="Change communication & engagement"> Change communication & engagement</label>
-                  <label><input type="checkbox" name="hr-area" value="Culture & leadership alignment"> Culture & leadership alignment</label>
-                </div>
-              </div>
-
-              <div class="check-grid hr-check-grid">
-                <label class="check-card"><input id="check-hr-engaged" type="checkbox"><span><strong>HR is engaged at the appropriate stage</strong><small>An HR focal person or relevant HR function has reviewed the initiative.</small></span></label>
-                <label class="check-card"><input id="check-hr-impact" type="checkbox"><span><strong>People impact assessment is completed</strong><small>Affected employees, roles, workload, structure and policy implications are identified.</small></span></label>
-                <label class="check-card"><input id="check-hr-workforce" type="checkbox"><span><strong>Workforce and capacity plan is agreed</strong><small>Required headcount, redeployment, recruitment, succession or capacity actions are defined.</small></span></label>
-                <label class="check-card"><input id="check-hr-skills" type="checkbox"><span><strong>Skills and training plan is prepared</strong><small>Capability gaps, learning approach, owners, timing and readiness measures are visible.</small></span></label>
-                <label class="check-card"><input id="check-hr-change" type="checkbox"><span><strong>Employee communication and adoption plan is prepared</strong><small>Consultation, communication, engagement, feedback and resistance management are addressed.</small></span></label>
-              </div>
-            </section>
-
-            <div class="field full assessment-note-field">
-              <label for="assessment-note">Assessment note, conditions or key assumptions</label>
-              <textarea id="assessment-note" rows="3" maxlength="1800" placeholder="Record important gaps, conditions, assumptions, reviewer comments or reasons an item is not applicable."></textarea>
-            </div>
-
-            <div id="readiness-advice" class="notice blue">
-              Complete the assessment to generate a readiness recommendation and gap list.
-            </div>
-            <div id="readiness-gaps" class="gap-list"></div>
-
-            <div class="readiness-scale">
-              <span><b>85–100%</b> Generally ready</span>
-              <span><b>70–84%</b> Proceed with conditions</span>
-              <span><b>55–69%</b> Rework gaps</span>
-              <span><b>Below 55%</b> Not ready / defer</span>
-              <span><b>Extreme risk</b> Escalate regardless of score</span>
-            </div>
-
-            <div class="actions split">
-              <button class="button light back-button" type="button" data-back="1">← Back</button>
-              <button id="step-2-next" class="button" type="button">Review Submission →</button>
-            </div>
-          </section>
-
-          <section id="step-3" class="panel step-screen">
-            <div class="panel-heading">
-              <div>
-                <span class="section-label">Step 3</span>
-                <h2>Review & Submit</h2>
-                <p>Check the summary before saving the initiative to Supabase.</p>
-              </div>
-              <span class="badge green-badge">Portfolio ready</span>
-            </div>
-
-            <div id="review-summary" class="review-grid"></div>
-
-            <div class="notice">
-              <strong>Before submitting:</strong>
-              Confirm that the initiative name, owner, strategic pillar, expected outcome
-              and progress are correct.
-            </div>
-
-            <div class="actions split">
-              <button class="button light back-button" type="button" data-back="2">← Back</button>
-              <button id="submit-project-button" class="button green" type="button">Save to Portfolio</button>
-            </div>
-          </section>
-        </div>
+          <div class="settings-grid">
+            <article><h3>Microsoft Entra ID</h3><p>Future SSO, MFA and approved organisational identities.</p><span>Planned</span></article>
+            <article><h3>Approval Workflow</h3><p>Stage gates, reviewer assignments, decisions and escalation.</p><span>Planned</span></article>
+            <article><h3>Document Repository</h3><p>Evidence uploads, formal papers, versions and retention.</p><span>Planned</span></article>
+            <article><h3>Audit Trail</h3><p>Immutable records of changes, approvals and role actions.</p><span>Foundation included</span></article>
+            <article><h3>Notifications</h3><p>Email or Teams alerts for overdue actions and approvals.</p><span>Planned</span></article>
+            <article><h3>AI Assistant</h3><p>Executive summaries, risk analysis and management papers.</p><span>Future</span></article>
+          </div>
+        </section>
       </section>
+    </main>
+  </div>
 
-      <section id="portfolio" class="panel portfolio-panel">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Management view</span>
-            <h2>My Initiative Portfolio</h2>
-            <p>Projects saved under the currently signed-in account.</p>
-          </div>
-          <div class="heading-actions">
-            <button id="new-project-button" class="button small" type="button">+ New Initiative</button>
-            <button id="refresh-button" class="button secondary small" type="button">Refresh</button>
-          </div>
+  <div id="initiative-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-heading">
+        <div><span class="section-label">Initiative record</span><h2 id="initiative-modal-title">Create Initiative</h2></div>
+        <button id="close-initiative-modal" class="icon-button" type="button">×</button>
+      </div>
+
+      <form id="initiative-form" class="form-grid">
+        <input id="initiative-id" type="hidden">
+
+        <label id="initiative-owner-field" class="field full hidden">
+          <span>Record owner / submit on behalf of</span>
+          <select id="initiative-created-by"></select>
+        </label>
+
+        <label class="field full"><span>Initiative name</span><input id="initiative-name" maxlength="150" required></label>
+        <label class="field"><span>Department</span><input id="initiative-department" required></label>
+        <label class="field"><span>Accountable owner</span><input id="initiative-owner" required></label>
+        <label class="field"><span>Strategic pillar</span><select id="initiative-pillar" required></select></label>
+        <label class="field"><span>Status</span><select id="initiative-status"><option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option></select></label>
+        <label class="field"><span>Risk level</span><select id="initiative-risk"><option>Low</option><option selected>Medium</option><option>High</option><option>Extreme</option></select></label>
+        <label class="field"><span>Progress (%)</span><input id="initiative-progress" type="number" min="0" max="100" value="0"></label>
+        <label class="field"><span>Readiness (%)</span><input id="initiative-readiness" type="number" min="0" max="100" value="50"></label>
+        <label class="field"><span>Target date</span><input id="initiative-target-date" type="date"></label>
+        <label class="field"><span>HR collaboration</span><select id="initiative-hr"><option>Not required</option><option>Required</option><option>To be confirmed</option></select></label>
+        <label class="field full"><span>Problem or opportunity</span><textarea id="initiative-problem" rows="3" required></textarea></label>
+        <label class="field full"><span>Expected enterprise outcome</span><textarea id="initiative-outcome" rows="3" required></textarea></label>
+        <label class="field full"><span>Next action or milestone</span><textarea id="initiative-next-action" rows="2"></textarea></label>
+
+        <div class="modal-actions full">
+          <button id="cancel-initiative-modal" class="button light" type="button">Cancel</button>
+          <button id="save-initiative-button" class="button gold" type="submit">Save Initiative</button>
         </div>
-
-        <div class="summary-grid">
-          <article><span>Total initiatives</span><strong id="kpi-total">0</strong></article>
-          <article><span>In progress</span><strong id="kpi-progress">0</strong></article>
-          <article><span>High / extreme risk</span><strong id="kpi-risk">0</strong></article>
-          <article><span>Average readiness</span><strong id="kpi-average">0%</strong></article>
-          <article><span>HR collaboration</span><strong id="kpi-hr">0</strong></article>
-        </div>
-
-        <div id="portfolio-message" class="notice blue hidden"></div>
-        <div id="portfolio-list" class="portfolio-list"></div>
-      </section>
-    </section>
-
-
-
-    <section id="admin-dashboard" class="hidden">
-      <section class="panel admin-welcome">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Super admin workspace</span>
-            <h2>HOME31 Enterprise Portfolio Dashboard</h2>
-            <p>Review all initiatives, monitor readiness and risk exceptions, and manage application roles from one controlled view.</p>
-          </div>
-          <span class="badge burgundy">Organisation-wide access</span>
-        </div>
-        <div class="admin-command-bar">
-          <button id="admin-key-in-initiative" class="button gold" type="button">+ Key In New Initiative</button>
-          <button id="admin-jump-users" class="button secondary" type="button">Add Normal User</button>
-          <button id="admin-jump-analytics" class="button light" type="button">View Analytics</button>
-        </div>
-
-        <nav class="admin-tabs" aria-label="Super admin workspaces">
-          <button class="admin-tab active" type="button" data-admin-tab="overview"><span>⌂</span> Executive Overview</button>
-          <button class="admin-tab" type="button" data-admin-tab="analytics"><span>◫</span> Portfolio Analytics</button>
-          <button class="admin-tab" type="button" data-admin-tab="initiatives"><span>▤</span> Initiative Management</button>
-          <button class="admin-tab" type="button" data-admin-tab="users"><span>♙</span> User Administration</button>
-          <button class="admin-tab" type="button" data-admin-tab="hr"><span>◎</span> HR Collaboration</button>
-          <button class="admin-tab" type="button" data-admin-tab="exceptions"><span>!</span> Risks & Exceptions</button>
-          <button class="admin-tab" type="button" data-admin-tab="settings"><span>⚙</span> System & Future</button>
-        </nav>
-        <div class="admin-principles">
-          <article><strong>Portfolio oversight</strong><span>All initiatives across every registered user and department.</span></article>
-          <article><strong>Interactive analytics</strong><span>Click chart segments to filter the underlying project portfolio.</span></article>
-          <article><strong>Direct administration</strong><span>Create active users, key in initiatives and manage delivery records.</span></article>
-        </div>
-      </section>
-
-      <section id="admin-overview" class="panel admin-tab-panel active" data-admin-panel="overview">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Enterprise overview</span>
-            <h2>Portfolio Scorecard</h2>
-            <p>Current organisation-wide position based on records visible to the super admin.</p>
-          </div>
-          <button id="admin-refresh-button" class="button secondary small" type="button">Refresh All Data</button>
-        </div>
-
-        <div class="summary-grid admin-summary-grid">
-          <article><span>Total users</span><strong id="admin-kpi-users">0</strong></article>
-          <article><span>Total initiatives</span><strong id="admin-kpi-projects">0</strong></article>
-          <article><span>High / extreme risk</span><strong id="admin-kpi-risk">0</strong></article>
-          <article><span>Average readiness</span><strong id="admin-kpi-readiness">0%</strong></article>
-          <article><span>HR collaboration</span><strong id="admin-kpi-hr">0</strong></article>
-          <article><span>Completed</span><strong id="admin-kpi-completed">0</strong></article>
-        </div>
-
-        <div class="executive-decision-grid">
-          <article>
-            <span>Immediate management attention</span>
-            <strong id="admin-exec-attention">0 initiatives</strong>
-            <small>High risk, extreme risk, overdue or low readiness.</small>
-          </article>
-          <article>
-            <span>Portfolio delivery health</span>
-            <strong id="admin-exec-health">No data</strong>
-            <small>Calculated from readiness, progress and exception exposure.</small>
-          </article>
-          <article>
-            <span>HR-dependent initiatives</span>
-            <strong id="admin-exec-hr">0 initiatives</strong>
-            <small>Projects requiring people, workforce or change collaboration.</small>
-          </article>
-          <article>
-            <span>Next governance focus</span>
-            <strong id="admin-exec-focus">Build portfolio data</strong>
-            <small>Suggested from the most material current exception.</small>
-          </article>
-        </div>
-      </section>
-
-      <section id="admin-analytics" class="panel admin-tab-panel" data-admin-panel="analytics">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Interactive portfolio intelligence</span>
-            <h2>Enterprise Analytics</h2>
-            <p>Click a chart item to apply the corresponding portfolio filter. Select “Clear Chart Filters” to return to the complete portfolio.</p>
-          </div>
-          <button id="admin-clear-chart-filters" class="button secondary small" type="button">Clear Chart Filters</button>
-        </div>
-
-        <div class="analytics-grid">
-          <article class="chart-card">
-            <div class="chart-card-heading"><h3>Initiatives by status</h3><span>Delivery position</span></div>
-            <div class="chart-shell"><canvas id="admin-status-chart"></canvas></div>
-          </article>
-          <article class="chart-card">
-            <div class="chart-card-heading"><h3>Strategic pillar coverage</h3><span>HOME31 alignment</span></div>
-            <div class="chart-shell"><canvas id="admin-pillar-chart"></canvas></div>
-          </article>
-          <article class="chart-card">
-            <div class="chart-card-heading"><h3>Risk distribution</h3><span>Exception monitoring</span></div>
-            <div class="chart-shell"><canvas id="admin-risk-chart"></canvas></div>
-          </article>
-          <article class="chart-card">
-            <div class="chart-card-heading"><h3>Readiness by department</h3><span>Average assessment score</span></div>
-            <div class="chart-shell"><canvas id="admin-readiness-chart"></canvas></div>
-          </article>
-        </div>
-
-        <div class="analytics-insights">
-          <article><span>Most represented pillar</span><strong id="admin-insight-pillar">—</strong></article>
-          <article><span>Department needing attention</span><strong id="admin-insight-department">—</strong></article>
-          <article><span>Projects below 70% readiness</span><strong id="admin-insight-low-readiness">0</strong></article>
-          <article><span>Overdue active projects</span><strong id="admin-insight-overdue">0</strong></article>
-        </div>
-      </section>
-
-      <section id="admin-initiatives" class="panel admin-tab-panel" data-admin-panel="initiatives">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Portfolio administration</span>
-            <h2>All Initiatives</h2>
-            <p>Filter the portfolio, update delivery status and progress, or remove an invalid test record.</p>
-          </div>
-          <button id="admin-export-button" class="button secondary small" type="button">Export CSV</button>
-        </div>
-
-        <div class="admin-filters">
-          <label class="field">
-            <span class="field-title">Search</span>
-            <input id="admin-search" type="search" placeholder="Initiative, department, owner or user">
-          </label>
-          <label class="field">
-            <span class="field-title">Status</span>
-            <select id="admin-status-filter">
-              <option value="">All statuses</option>
-              <option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field-title">Pillar</span>
-            <select id="admin-pillar-filter">
-              <option value="">All pillars</option>
-              <option>Financial Sustainability</option>
-              <option>Digital & Data Transformation</option>
-              <option>Governance Stewardship</option>
-              <option>Customer Experience Transformation</option>
-              <option>Workforce & Leadership Transformation</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field-title">Risk</span>
-            <select id="admin-risk-filter">
-              <option value="">All risk levels</option>
-              <option>Low</option><option>Medium</option><option>High</option><option>Extreme</option>
-            </select>
-          </label>
-        </div>
-
-        <div id="admin-project-message" class="notice blue hidden"></div>
-        <div id="admin-project-list" class="admin-project-list"></div>
-      </section>
-
-      <section id="admin-user-create" class="panel admin-tab-panel" data-admin-panel="users">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Temporary user administration</span>
-            <h2>Add a User</h2>
-            <p>Create an immediately active normal-user account without an Edge Function. This temporary mode requires email confirmation to be disabled in Supabase Auth settings.</p>
-          </div>
-          <span class="badge green-badge">Super admin only</span>
-        </div>
-
-        <form id="admin-create-user-form" class="admin-create-user-form">
-          <label class="field">
-            <span class="field-title">Full name</span>
-            <input id="admin-new-user-name" type="text" maxlength="120" placeholder="User's full name" required>
-          </label>
-
-          <label class="field">
-            <span class="field-title">Department</span>
-            <input id="admin-new-user-department" type="text" maxlength="120" placeholder="Department or division" required>
-          </label>
-
-          <label class="field">
-            <span class="field-title">Email address</span>
-            <input id="admin-new-user-email" type="email" autocomplete="off" placeholder="user@example.com" required>
-          </label>
-
-          <label class="field">
-            <span class="field-title">Account method</span>
-            <select id="admin-new-user-method">
-              <option value="create" selected>Create active account — no email required</option>
-              <option value="invite">Send invitation email</option>
-            </select>
-          </label>
-
-          <label id="admin-new-user-password-field" class="field full">
-            <span class="field-title">Temporary password</span>
-            <input id="admin-new-user-password" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters">
-            <small>Share the password securely and ask the user to change it after the first login.</small>
-          </label>
-
-          <div class="admin-create-user-note full">
-            <strong>Default access:</strong>
-            Every account created here starts as <b>Normal User</b>. Promote it later through the User Directory only when super-admin access is genuinely required.
-          </div>
-
-          <div class="credential-tools full">
-            <button id="admin-generate-password" class="button light small" type="button">Generate Temporary Password</button>
-            <button id="admin-copy-credentials" class="button secondary small" type="button">Copy Login Details</button>
-          </div>
-          <div class="admin-create-user-actions full">
-            <button id="admin-create-user-button" class="button green" type="submit">Create Active Normal User</button>
-          </div>
-        </form>
-      </section>
-
-      <section id="admin-user-directory-panel" class="panel admin-tab-panel" data-admin-panel="users">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Access administration</span>
-            <h2>User Directory & Roles</h2>
-            <p>Every new registration starts as a normal user. Promote only trusted application administrators.</p>
-          </div>
-          <span class="badge gold-badge">Protected by RLS</span>
-        </div>
-
-        <div class="notice warning admin-role-warning">
-          <strong>Important:</strong> Super-admin access provides visibility and control over all application project records. Do not promote ordinary initiative owners.
-        </div>
-        <div id="admin-user-list" class="admin-user-list"></div>
-      </section>
-
-      <section id="admin-hr-workspace" class="panel admin-tab-panel" data-admin-panel="hr">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">People and change governance</span>
-            <h2>HR Collaboration Workspace</h2>
-            <p>Focus on initiatives requiring workforce planning, capability development, communication, organisation design or employee adoption support.</p>
-          </div>
-          <span class="badge blue-badge">Cross-functional view</span>
-        </div>
-
-        <div class="summary-grid">
-          <article><span>HR collaboration required</span><strong id="admin-hr-required">0</strong></article>
-          <article><span>HR engagement incomplete</span><strong id="admin-hr-incomplete">0</strong></article>
-          <article><span>Training plans missing</span><strong id="admin-hr-training-gap">0</strong></article>
-          <article><span>Change plans missing</span><strong id="admin-hr-change-gap">0</strong></article>
-        </div>
-
-        <div class="future-split">
-          <div>
-            <h3>HR-dependent initiatives</h3>
-            <div id="admin-hr-project-list" class="future-list"></div>
-          </div>
-          <aside class="future-roadmap">
-            <h3>Future HR enhancements</h3>
-            <ul>
-              <li>HR review workflow and formal endorsement.</li>
-              <li>Training-demand aggregation by competency.</li>
-              <li>Workforce-capacity and redeployment planning.</li>
-              <li>Change saturation and employee-impact heatmap.</li>
-              <li>Integration with HRMS and learning records.</li>
-            </ul>
-          </aside>
-        </div>
-      </section>
-
-      <section id="admin-exceptions-workspace" class="panel admin-tab-panel" data-admin-panel="exceptions">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Management by exception</span>
-            <h2>Risks, Overdue Actions & Low Readiness</h2>
-            <p>A consolidated queue for initiatives requiring intervention, escalation or conditional approval.</p>
-          </div>
-          <span class="badge burgundy">Attention required</span>
-        </div>
-
-        <div class="exception-lanes">
-          <article>
-            <div class="lane-heading"><span>High / Extreme Risk</span><strong id="exception-risk-count">0</strong></div>
-            <div id="exception-risk-list" class="future-list compact"></div>
-          </article>
-          <article>
-            <div class="lane-heading"><span>Below 70% Readiness</span><strong id="exception-readiness-count">0</strong></div>
-            <div id="exception-readiness-list" class="future-list compact"></div>
-          </article>
-          <article>
-            <div class="lane-heading"><span>Overdue Active Projects</span><strong id="exception-overdue-count">0</strong></div>
-            <div id="exception-overdue-list" class="future-list compact"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="admin-settings-workspace" class="panel admin-tab-panel" data-admin-panel="settings">
-        <div class="panel-heading">
-          <div>
-            <span class="section-label">Architecture and roadmap</span>
-            <h2>System Settings & Future Modules</h2>
-            <p>A structured place for future administration controls without crowding the operational dashboards.</p>
-          </div>
-          <span class="badge gold-badge">Future ready</span>
-        </div>
-
-        <div class="settings-grid">
-          <article>
-            <h3>Access & Security</h3>
-            <p>Future: Entra ID SSO, MFA, approved-domain restrictions, session controls and delegated administration.</p>
-            <span class="future-status">Planned</span>
-          </article>
-          <article>
-            <h3>Workflow & Approvals</h3>
-            <p>Future: configurable stage gates, reviewer assignment, approval conditions, reminders and escalation paths.</p>
-            <span class="future-status">Planned</span>
-          </article>
-          <article>
-            <h3>Notifications</h3>
-            <p>Future: email or Teams notifications for overdue actions, gate decisions, risk escalation and HR review.</p>
-            <span class="future-status">Planned</span>
-          </article>
-          <article>
-            <h3>Document Repository</h3>
-            <p>Future: evidence attachments, version control, formal papers and links to approved organisational repositories.</p>
-            <span class="future-status">Planned</span>
-          </article>
-          <article>
-            <h3>Advanced Analytics</h3>
-            <p>Future: trend analysis, scenario simulation, forecast completion, benefits tracking and portfolio optimisation.</p>
-            <span class="future-status">Planned</span>
-          </article>
-          <article>
-            <h3>Audit & Data Governance</h3>
-            <p>Future: immutable audit trail, data-retention rules, quality checks, data ownership and compliance reporting.</p>
-            <span class="future-status">Planned</span>
-          </article>
-        </div>
-
-        <div class="notice blue">
-          <strong>Current prototype boundary:</strong>
-          Settings shown here are roadmap placeholders. Production controls require approved organisational architecture, security, privacy and governance decisions.
-        </div>
-      </section>
-    </section>
-
-    <footer class="footer">
-      HOME31 Initiative Register • Simplified Supabase Prototype<br>
-      Use dummy or non-confidential data unless organisational hosting and security approval are in place.
-    </footer>
-  </main>
+      </form>
+    </div>
+  </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 

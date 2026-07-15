@@ -36,75 +36,46 @@ Deno.serve(async request => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
-
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
-  const { data: { user: caller }, error: callerError } =
-    await callerClient.auth.getUser();
+  const { data: { user: caller } } = await callerClient.auth.getUser();
+  if (!caller) return respond({ error: "Invalid session." }, 401);
 
-  if (callerError || !caller) {
-    return respond({ error: "Invalid or expired session." }, 401);
-  }
-
-  const { data: callerProfile } = await adminClient
+  const { data: profile } = await adminClient
     .from("profiles")
     .select("role, account_status")
     .eq("id", caller.id)
     .maybeSingle();
 
-  if (callerProfile?.role !== "super_admin" || callerProfile?.account_status !== "active") {
+  if (profile?.role !== "super_admin" || profile?.account_status !== "active") {
     return respond({ error: "Super-admin access required." }, 403);
   }
 
   const payload = await request.json();
-  const email = String(payload.email ?? "").trim().toLowerCase();
-  const password = String(payload.password ?? "");
-  const fullName = String(payload.full_name ?? "").trim();
-  const department = String(payload.department ?? "").trim();
+  const targetUserId = String(payload.user_id ?? "");
+  const temporaryPassword = String(payload.password ?? "");
 
-  if (!email || !password || !fullName) {
-    return respond({ error: "Name, email and temporary password are required." }, 400);
+  if (!targetUserId || temporaryPassword.length < 10) {
+    return respond({ error: "User ID and a temporary password of at least 10 characters are required." }, 400);
   }
 
-  if (password.length < 10) {
-    return respond({ error: "Temporary password must contain at least 10 characters." }, 400);
-  }
+  const { error: updateError } = await adminClient.auth.admin.updateUserById(
+    targetUserId,
+    { password: temporaryPassword }
+  );
 
-  const { data, error } = await adminClient.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: fullName,
-      department
-    }
-  });
+  if (updateError) return respond({ error: updateError.message }, 400);
 
-  if (error || !data.user) {
-    return respond({ error: error?.message ?? "Unable to create user." }, 400);
-  }
-
-  const { error: profileError } = await adminClient.from("profiles").upsert({
-    id: data.user.id,
-    email,
-    full_name: fullName,
-    department,
-    role: "normal_user",
+  await adminClient.from("profiles").update({
     must_change_password: true,
-    account_status: "active",
+    password_changed_at: null,
     updated_at: new Date().toISOString()
-  });
-
-  if (profileError) {
-    await adminClient.auth.admin.deleteUser(data.user.id);
-    return respond({ error: "Profile creation failed. Auth user was rolled back." }, 500);
-  }
+  }).eq("id", targetUserId);
 
   return respond({
     ok: true,
-    user_id: data.user.id,
-    message: "Active normal user created. Password change is required at first login."
+    message: "Temporary password assigned. The user must change it at next login."
   });
 });

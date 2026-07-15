@@ -1,12 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
-
-// Resolves automatically to the folder where this page is currently hosted.
-// This preserves a GitHub Pages repository path instead of redirecting only
-// to https://USERNAME.github.io/.
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 const AUTH_REDIRECT_URL = new URL(".", window.location.href).href;
 
 const configured =
@@ -15,891 +10,856 @@ const configured =
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Temporary provisioning client. It does not persist or replace the super
-// admin's current browser session.
-const provisioningClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    }
-  }
-);
+const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
 
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-
-const READINESS_GROUPS = {
-  strategy: [
-    ["#check-strategy", "HOME31 alignment is explicit"],
-    ["#check-owner", "Ownership and decision rights are confirmed"],
-    ["#check-scope", "Scope, dependencies and success boundaries are defined"]
-  ],
-  value: [
-    ["#check-value-case", "Business need and options are supported"],
-    ["#check-kpi", "Baseline, target and benefits ownership are defined"],
-    ["#check-budget", "Funding and total cost view are available"]
-  ],
-  control: [
-    ["#check-risk", "Risk, compliance and policy review is completed"],
-    ["#check-data", "Architecture, data, privacy, cyber and resilience impacts are reviewed"],
-    ["#check-procurement", "Procurement and vendor implications are understood"]
-  ],
-  delivery: [
-    ["#check-delivery", "Delivery plan, resources and milestones are credible"],
-    ["#check-operations", "Operational readiness and handover are considered"],
-    ["#check-change", "Stakeholder, communication and adoption plan is defined"]
-  ],
-  hr: [
-    ["#check-hr-engaged", "HR is engaged at the appropriate stage"],
-    ["#check-hr-impact", "People impact assessment is completed"],
-    ["#check-hr-workforce", "Workforce and capacity plan is agreed"],
-    ["#check-hr-skills", "Skills and training plan is prepared"],
-    ["#check-hr-change", "Employee communication and adoption plan is prepared"]
-  ]
-};
-
-const ALL_READINESS_SELECTORS = Object.values(READINESS_GROUPS)
-  .flat()
-  .map(([selector]) => selector);
-
-const elements = {
-  warning: $("#configuration-warning"),
-  authSection: $("#auth-section"),
-  userDashboard: $("#user-dashboard"),
-  adminDashboard: $("#admin-dashboard"),
-  roleBadge: $("#role-badge"),
-  adminDashboardButton: $("#admin-dashboard-button"),
-  userEmail: $("#user-email"),
-  logoutButton: $("#logout-button"),
-  nav: $(".nav"),
-  menuButton: $("#menu-button"),
-  loginForm: $("#login-form"),
-  signupForm: $("#signup-form"),
-  projectForm: $("#project-form"),
-  projectId: $("#project-id"),
-  readinessScore: $("#readiness-score"),
-  readinessBar: $("#readiness-bar"),
-  readinessRecommendation: $("#readiness-recommendation"),
-  readinessAdvice: $("#readiness-advice"),
-  readinessGaps: $("#readiness-gaps"),
-  hrPanel: $("#hr-collaboration-panel"),
-  reviewSummary: $("#review-summary"),
-  submitButton: $("#submit-project-button"),
-  portfolioList: $("#portfolio-list"),
-  portfolioMessage: $("#portfolio-message"),
-  toast: $("#toast"),
-  journeyBar: $("#journey-bar"),
-  journeyLabel: $("#journey-label"),
-  journeyPercent: $("#journey-percent"),
-  adminProjectList: $("#admin-project-list"),
-  adminProjectMessage: $("#admin-project-message"),
-  adminUserList: $("#admin-user-list"),
-  adminCreateUserForm: $("#admin-create-user-form"),
-  adminCreateUserButton: $("#admin-create-user-button"),
-  adminNewUserPasswordField: $("#admin-new-user-password-field"),
-  adminNewUserPassword: $("#admin-new-user-password"),
-  adminRecordOwnerField: $("#admin-record-owner-field"),
-  adminRecordOwner: $("#admin-record-owner")
-};
+const pillars = [
+  "Financial Sustainability",
+  "Digital & Data Transformation",
+  "Governance Stewardship",
+  "Customer Experience Transformation",
+  "Workforce & Leadership Transformation"
+];
 
 let currentUser = null;
 let currentProfile = null;
-let currentStep = 1;
-let projects = [];
+let userProjects = [];
 let adminProjects = [];
 let adminProfiles = [];
-let adminCharts = {};
-let lastCreatedCredentials = null;
+let charts = {};
 
-if (!configured) elements.warning.classList.remove("hidden");
-
-initialise();
+document.addEventListener("DOMContentLoaded", initialise);
 
 async function initialise() {
-  registerEvents();
-  handleAuthRedirectFeedback();
-  updateHrVisibility();
-  calculateReadiness();
-  updateAdminCreateUserMethod();
+  bindEvents();
+  populatePillars();
+  handleResetLink();
 
-  if (!configured) return;
-
-  const { data, error } = await supabase.auth.getSession();
-  if (error) showToast(error.message, true);
-
-  currentUser = data.session?.user ?? null;
-  await renderSession();
-}
-
-function registerEvents() {
-  elements.loginForm.addEventListener("submit", signIn);
-  elements.signupForm.addEventListener("submit", signUp);
-  $("#resend-confirmation-button").addEventListener("click", resendConfirmation);
-  elements.logoutButton.addEventListener("click", signOut);
-  elements.menuButton.addEventListener("click", () => elements.nav.classList.toggle("open"));
-
-  $$("[data-scroll]").forEach(button => {
-    button.addEventListener("click", () => {
-      const target = document.getElementById(button.dataset.scroll);
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-      elements.nav.classList.remove("open");
-    });
-  });
-
-  $$(".step-link").forEach(button => {
-    button.addEventListener("click", () => showStep(Number(button.dataset.step)));
-  });
-
-  $$(".back-button").forEach(button => {
-    button.addEventListener("click", () => showStep(Number(button.dataset.back)));
-  });
-
-  $("#start-button").addEventListener("click", startNewInitiative);
-  $("#new-project-button").addEventListener("click", startNewInitiative);
-  $("#demo-button").addEventListener("click", loadSample);
-  $("#step-1-next").addEventListener("click", completeStepOne);
-  $("#step-2-next").addEventListener("click", completeStepTwo);
-  elements.submitButton.addEventListener("click", submitProject);
-  $("#refresh-button").addEventListener("click", loadProjects);
-  $("#admin-dashboard-button").addEventListener("click", () => {
-    $("#admin-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-  $("#admin-refresh-button").addEventListener("click", loadAdminData);
-  $("#admin-export-button").addEventListener("click", exportAdminProjectsCsv);
-  elements.adminCreateUserForm.addEventListener("submit", adminCreateUser);
-  $("#admin-new-user-method").addEventListener("change", updateAdminCreateUserMethod);
-  $("#admin-generate-password").addEventListener("click", generateTemporaryPassword);
-  $("#admin-copy-credentials").addEventListener("click", copyLastCreatedCredentials);
-  $("#admin-key-in-initiative").addEventListener("click", startNewInitiative);
-  $("#admin-jump-users").addEventListener("click", () => showAdminTab("users"));
-  $("#admin-jump-analytics").addEventListener("click", () => showAdminTab("analytics"));
-  $("#admin-clear-chart-filters").addEventListener("click", clearAdminChartFilters);
-  $$(".admin-tab").forEach(button => {
-    button.addEventListener("click", () => showAdminTab(button.dataset.adminTab));
-  });
-  ["#admin-search", "#admin-status-filter", "#admin-pillar-filter", "#admin-risk-filter"]
-    .forEach(selector => $(selector).addEventListener("input", renderAdminProjects));
-
-  ALL_READINESS_SELECTORS.forEach(selector => {
-    $(selector).addEventListener("change", calculateReadiness);
-  });
-
-  ["#risk-level", "#assessment-note"].forEach(selector => {
-    $(selector).addEventListener("change", calculateReadiness);
-  });
-
-  $("#hr-collaboration-status").addEventListener("change", () => {
-    updateHrVisibility();
-    calculateReadiness();
-  });
-
-  supabase.auth.onAuthStateChange(async (_event, session) => {
-    currentUser = session?.user ?? null;
-    await renderSession();
-  });
-}
-
-async function signIn(event) {
-  event.preventDefault();
-  if (!configured) return showToast("Configure Supabase in app.js first.", true);
-
-  const email = $("#login-email").value.trim();
-  const password = $("#login-password").value;
-
-  setBusy(elements.loginForm, true);
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  setBusy(elements.loginForm, false);
-
-  if (error) return showToast(error.message, true);
-  elements.loginForm.reset();
-  showToast("Signed in successfully.");
-}
-
-async function signUp(event) {
-  event.preventDefault();
-  if (!configured) return showToast("Configure Supabase in app.js first.", true);
-
-  const email = $("#signup-email").value.trim();
-  const password = $("#signup-password").value;
-  const fullName = $("#signup-full-name").value.trim();
-  const department = $("#signup-department").value.trim();
-
-  setBusy(elements.signupForm, true);
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: AUTH_REDIRECT_URL,
-      data: { full_name: fullName, department }
-    }
-  });
-  setBusy(elements.signupForm, false);
-
-  if (error) return showToast(error.message, true);
-
-  elements.signupForm.reset();
-  showToast(data.session
-    ? "Account created and signed in."
-    : "Account created. Check your email to confirm it.");
-}
-
-async function resendConfirmation() {
-  if (!configured) return showToast("Configure Supabase in app.js first.", true);
-
-  const email = $("#signup-email").value.trim() || $("#login-email").value.trim();
-
-  if (!email) {
-    return showToast(
-      "Enter the registered email address in the sign-up or sign-in email field first.",
-      true
-    );
-  }
-
-  const button = $("#resend-confirmation-button");
-  button.disabled = true;
-  button.textContent = "Sending...";
-
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email,
-    options: {
-      emailRedirectTo: AUTH_REDIRECT_URL
-    }
-  });
-
-  button.disabled = false;
-  button.textContent = "Resend confirmation email";
-
-  if (error) return showToast(error.message, true);
-
-  showToast(
-    `A fresh confirmation email was requested for ${email}. Use only the newest email link.`
-  );
-}
-
-function handleAuthRedirectFeedback() {
-  const hash = window.location.hash.replace(/^#/, "");
-  if (!hash) return;
-
-  const params = new URLSearchParams(hash);
-  const errorCode = params.get("error_code");
-  const errorDescription = params.get("error_description");
-
-  if (!errorCode && !errorDescription) return;
-
-  let message = errorDescription || "Authentication could not be completed.";
-
-  if (errorCode === "otp_expired") {
-    message =
-      "This confirmation link has expired or has already been used. " +
-      "Enter the same email address and select “Resend confirmation email”, " +
-      "then use only the newest link.";
-  }
-
-  window.history.replaceState(
-    {},
-    document.title,
-    `${window.location.pathname}${window.location.search}`
-  );
-
-  window.setTimeout(() => showToast(message, true), 100);
-}
-
-async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) return showToast(error.message, true);
-  showToast("Logged out.");
-}
-
-async function renderSession() {
-  const signedIn = Boolean(currentUser);
-
-  elements.authSection.classList.toggle("hidden", signedIn);
-  elements.logoutButton.classList.toggle("hidden", !signedIn);
-  elements.userEmail.classList.toggle("hidden", !signedIn);
-  elements.roleBadge.classList.toggle("hidden", !signedIn);
-
-  if (!signedIn) {
-    currentProfile = null;
-    projects = [];
-    adminProjects = [];
-    adminProfiles = [];
-    elements.userDashboard.classList.add("hidden");
-    elements.adminDashboard.classList.add("hidden");
-    elements.adminDashboardButton.classList.add("hidden");
-    $("#start-button").classList.remove("hidden");
-    $("#demo-button").classList.remove("hidden");
-    $$(".role-nav").forEach(item => item.classList.add("hidden"));
-    renderProjects();
-    resetForm();
+  if (!configured) {
+    $("#configuration-warning").classList.remove("hidden");
     return;
   }
 
-  elements.userEmail.textContent = currentUser.email ?? "Signed-in user";
+  supabase.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user ?? null;
+    await routeSession();
+  });
+
+  const { data } = await supabase.auth.getSession();
+  currentUser = data.session?.user ?? null;
+  await routeSession();
+}
+
+function bindEvents() {
+  $("#login-form").addEventListener("submit", login);
+  $("#forgot-password-button").addEventListener("click", () => toggleAuthCard("forgot"));
+  $("#back-to-login-button").addEventListener("click", () => toggleAuthCard("login"));
+  $("#forgot-password-form").addEventListener("submit", sendPasswordReset);
+
+  $("#force-password-form").addEventListener("submit", completeForcedPasswordChange);
+  $("#force-new-password").addEventListener("input", updatePasswordStrength);
+  $("#force-logout-button").addEventListener("click", logout);
+
+  $("#logout-button").addEventListener("click", logout);
+  $("#menu-toggle").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+  $("#top-account-button").addEventListener("click", () => showModule("account"));
+
+  $$(".nav-item").forEach(button =>
+    button.addEventListener("click", () => showModule(button.dataset.module))
+  );
+  $$("[data-jump]").forEach(button =>
+    button.addEventListener("click", () => showModule(button.dataset.jump))
+  );
+  $$("[data-open-initiative]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal())
+  );
+
+  $("#profile-form").addEventListener("submit", updateProfile);
+  $("#change-password-form").addEventListener("submit", updatePasswordFromAccount);
+
+  $("#user-search").addEventListener("input", renderUserInitiatives);
+  $("#user-status-filter").addEventListener("change", renderUserInitiatives);
+  $("#user-clear-filters").addEventListener("click", () => {
+    $("#user-search").value = "";
+    $("#user-status-filter").value = "";
+    renderUserInitiatives();
+  });
+
+  $("#admin-search").addEventListener("input", renderAdminPortfolio);
+  ["#admin-status-filter", "#admin-pillar-filter", "#admin-risk-filter"].forEach(selector =>
+    $(selector).addEventListener("change", renderAdminPortfolio)
+  );
+  $("#admin-clear-filters").addEventListener("click", clearAdminFilters);
+
+  $("#admin-create-user-form").addEventListener("submit", createUserAsAdmin);
+  $("#generate-password-button").addEventListener("click", generateTemporaryPassword);
+  $("#refresh-admin-data").addEventListener("click", loadAdminData);
+
+  $("#initiative-form").addEventListener("submit", saveInitiative);
+  $("#close-initiative-modal").addEventListener("click", closeInitiativeModal);
+  $("#cancel-initiative-modal").addEventListener("click", closeInitiativeModal);
+}
+
+async function routeSession() {
+  if (!currentUser) {
+    showAuth();
+    return;
+  }
 
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
-    .single();
+    .maybeSingle();
 
   if (error || !profile) {
-    showToast(error?.message || "User profile is not available. Run the latest SQL setup script.", true);
+    showToast(error?.message || "Unable to load your user profile.", true);
     await supabase.auth.signOut();
     return;
   }
 
   currentProfile = profile;
-  const isAdmin = profile.role === "super_admin";
 
-  elements.roleBadge.textContent = isAdmin ? "SUPER ADMIN" : "NORMAL USER";
-  elements.userDashboard.classList.remove("hidden");
-  elements.adminDashboard.classList.toggle("hidden", !isAdmin);
-  elements.adminDashboardButton.classList.toggle("hidden", !isAdmin);
-  $("#start-button").classList.remove("hidden");
-  $("#demo-button").classList.remove("hidden");
-  $("#nav-new-initiative").classList.remove("hidden");
-  $("#nav-my-portfolio").classList.remove("hidden");
-  $("#nav-admin-dashboard").classList.toggle("hidden", !isAdmin);
-  elements.adminRecordOwnerField.classList.toggle("hidden", !isAdmin);
+  if (profile.must_change_password) {
+    showForcedPassword();
+    return;
+  }
 
-  if (isAdmin) {
+  await openPlatform();
+}
+
+function showAuth() {
+  $("#auth-screen").classList.remove("hidden");
+  $("#force-password-screen").classList.add("hidden");
+  $("#platform").classList.add("hidden");
+}
+
+function showForcedPassword() {
+  $("#auth-screen").classList.add("hidden");
+  $("#force-password-screen").classList.remove("hidden");
+  $("#platform").classList.add("hidden");
+}
+
+async function openPlatform() {
+  $("#auth-screen").classList.add("hidden");
+  $("#force-password-screen").classList.add("hidden");
+  $("#platform").classList.remove("hidden");
+
+  renderIdentity();
+  await loadUserProjects();
+
+  if (currentProfile.role === "super_admin") {
+    $("#admin-nav").classList.remove("hidden");
+    $("#initiative-owner-field").classList.remove("hidden");
     await loadAdminData();
-    populateAdminRecordOwners();
-    await loadProjects();
-    showAdminTab("overview");
-    $("#admin-dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
+    showModule("admin-overview");
   } else {
-    await loadProjects();
+    $("#admin-nav").classList.add("hidden");
+    $("#initiative-owner-field").classList.add("hidden");
+    showModule("user-home");
   }
 }
 
-function showStep(step) {
-  currentStep = Math.max(1, Math.min(3, step));
+function renderIdentity() {
+  const name = currentProfile.full_name || currentUser.email;
+  $("#sidebar-name").textContent = name;
+  $("#sidebar-role").textContent = labelRole(currentProfile.role);
+  $("#sidebar-avatar").textContent = initials(name);
+  $("#welcome-title").textContent = `Welcome, ${name.split(" ")[0] || "User"}.`;
+  $("#welcome-role").textContent = labelRole(currentProfile.role);
+  $("#account-full-name").value = currentProfile.full_name || "";
+  $("#account-email").value = currentUser.email || "";
+  $("#account-department").value = currentProfile.department || "";
+}
 
-  $$(".step-screen").forEach(screen => screen.classList.remove("active"));
-  $$(".step-link").forEach(link => link.classList.remove("active"));
+async function login(event) {
+  event.preventDefault();
+  if (!configured) return showToast("Configure Supabase in app.js first.", true);
 
-  $(`#step-${currentStep}`).classList.add("active");
-  $(`.step-link[data-step="${currentStep}"]`).classList.add("active");
+  const button = event.submitter;
+  button.disabled = true;
+  button.textContent = "Signing in...";
 
-  for (let number = 1; number <= 3; number += 1) {
-    const state = $(`#step-state-${number}`);
-    if (number < currentStep) state.textContent = "Done";
-    else if (number === currentStep) state.textContent = "Current";
-    else state.textContent = "Pending";
+  const { error } = await supabase.auth.signInWithPassword({
+    email: $("#login-email").value.trim(),
+    password: $("#login-password").value
+  });
+
+  button.disabled = false;
+  button.textContent = "Sign in";
+
+  if (error) return showToast(error.message, true);
+  $("#login-form").reset();
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  userProjects = [];
+  adminProjects = [];
+  adminProfiles = [];
+  destroyCharts();
+  showAuth();
+}
+
+function toggleAuthCard(target) {
+  $("#login-form").classList.toggle("hidden", target !== "login");
+  $("#forgot-password-form").classList.toggle("hidden", target !== "forgot");
+}
+
+async function sendPasswordReset(event) {
+  event.preventDefault();
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    $("#forgot-email").value.trim(),
+    { redirectTo: AUTH_REDIRECT_URL }
+  );
+  if (error) return showToast(error.message, true);
+  showToast("Password reset email sent.");
+  toggleAuthCard("login");
+}
+
+function handleResetLink() {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  if (hash.get("type") === "recovery") {
+    window.setTimeout(() => showModule("account"), 700);
+  }
+}
+
+async function completeForcedPasswordChange(event) {
+  event.preventDefault();
+  const password = $("#force-new-password").value;
+  const confirm = $("#force-confirm-password").value;
+
+  if (password !== confirm) return showToast("The passwords do not match.", true);
+  if (!isStrongPassword(password)) {
+    return showToast("Use at least 10 characters with uppercase, lowercase, number and symbol.", true);
   }
 
-  const percentage = Math.round((currentStep / 3) * 100);
-  elements.journeyBar.style.width = `${percentage}%`;
-  elements.journeyLabel.textContent = `Step ${currentStep} of 3`;
-  elements.journeyPercent.textContent = `${percentage}%`;
+  const button = event.submitter;
+  button.disabled = true;
+  button.textContent = "Updating...";
 
-  $("#workspace").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function completeStepOne() {
-  if (!elements.projectForm.reportValidity()) return;
-
-  const progress = Number($("#progress").value);
-  if (progress < 0 || progress > 100) {
-    return showToast("Progress must be between 0 and 100.", true);
+  const { error: authError } = await supabase.auth.updateUser({ password });
+  if (authError) {
+    button.disabled = false;
+    button.textContent = "Change Password & Continue";
+    return showToast(authError.message, true);
   }
 
-  $("#check-strategy").checked = Boolean(value("#strategic-pillar") && value("#enterprise-outcome"));
-  $("#check-owner").checked = Boolean(value("#accountable-owner") && value("#executive-sponsor"));
-  $("#check-kpi").checked = Boolean(value("#value-target"));
-  $("#check-scope").checked = Boolean(value("#problem-opportunity") && value("#next-action"));
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      must_change_password: false,
+      password_changed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", currentUser.id);
 
-  calculateReadiness();
-  showStep(2);
+  button.disabled = false;
+  button.textContent = "Change Password & Continue";
+
+  if (profileError) return showToast(profileError.message, true);
+
+  currentProfile.must_change_password = false;
+  currentProfile.password_changed_at = new Date().toISOString();
+  $("#force-password-form").reset();
+  showToast("Password changed successfully.");
+  await openPlatform();
 }
 
-function completeStepTwo() {
-  const assessment = calculateReadiness();
-  if (value("#hr-collaboration-status") === "Required" && !value("#hr-impact-summary")) {
-    showToast("Please add a people and workforce impact summary, or select To be confirmed.", true);
-    $("#hr-impact-summary").focus();
-    return;
-  }
-
-  if (assessment.score < 55) {
-    const proceed = window.confirm(
-      `The readiness score is ${assessment.score}% (${assessment.recommendation}). Continue to review with the gaps recorded?`
-    );
-    if (!proceed) return;
-  }
-
-  buildReview();
-  showStep(3);
+function updatePasswordStrength() {
+  const password = $("#force-new-password").value;
+  let score = 0;
+  if (password.length >= 10) score += 25;
+  if (/[A-Z]/.test(password)) score += 25;
+  if (/[a-z]/.test(password) && /\d/.test(password)) score += 25;
+  if (/[^A-Za-z0-9]/.test(password)) score += 25;
+  $("#password-strength span").style.width = `${score}%`;
 }
 
-function updateHrVisibility() {
-  const status = value("#hr-collaboration-status");
-  const applicable = status !== "Not required";
-  elements.hrPanel.classList.toggle("hidden", !applicable);
-  $("#score-hr-card").classList.toggle("hidden", !applicable);
+function isStrongPassword(password) {
+  return password.length >= 10 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /\d/.test(password) &&
+    /[^A-Za-z0-9]/.test(password);
 }
 
-function categoryScore(entries) {
-  const completed = entries.filter(([selector]) => $(selector).checked).length;
-  return Math.round((completed / entries.length) * 100);
-}
-
-function calculateReadiness() {
-  const hrApplicable = value("#hr-collaboration-status") !== "Not required";
-  const applicableGroups = [
-    ...Object.values(READINESS_GROUPS).slice(0, 4),
-    ...(hrApplicable ? [READINESS_GROUPS.hr] : [])
-  ];
-  const applicableChecks = applicableGroups.flat();
-  const completed = applicableChecks.filter(([selector]) => $(selector).checked).length;
-  const score = applicableChecks.length
-    ? Math.round((completed / applicableChecks.length) * 100)
-    : 0;
-
-  const categoryScores = {
-    strategy: categoryScore(READINESS_GROUPS.strategy),
-    value: categoryScore(READINESS_GROUPS.value),
-    control: categoryScore(READINESS_GROUPS.control),
-    delivery: categoryScore(READINESS_GROUPS.delivery),
-    hr: hrApplicable ? categoryScore(READINESS_GROUPS.hr) : null
+async function updateProfile(event) {
+  event.preventDefault();
+  const updates = {
+    full_name: $("#account-full-name").value.trim(),
+    department: $("#account-department").value.trim(),
+    updated_at: new Date().toISOString()
   };
 
-  $("#score-strategy").textContent = `${categoryScores.strategy}%`;
-  $("#score-value").textContent = `${categoryScores.value}%`;
-  $("#score-control").textContent = `${categoryScores.control}%`;
-  $("#score-delivery").textContent = `${categoryScores.delivery}%`;
-  $("#score-hr").textContent = `${categoryScores.hr ?? 0}%`;
+  const { error } = await supabase.from("profiles").update(updates).eq("id", currentUser.id);
+  if (error) return showToast(error.message, true);
 
-  const risk = value("#risk-level");
-  let recommendation;
-  if (risk === "Extreme") recommendation = "Escalate";
-  else if (score >= 85 && risk !== "High") recommendation = "Generally ready";
-  else if (score >= 70) recommendation = "Proceed with conditions";
-  else if (score >= 55) recommendation = "Rework gaps";
-  else recommendation = "Not ready / defer";
+  Object.assign(currentProfile, updates);
+  renderIdentity();
+  showToast("Profile updated.");
+}
 
-  const gaps = applicableChecks
-    .filter(([selector]) => !$(selector).checked)
-    .map(([, label]) => label);
+async function updatePasswordFromAccount(event) {
+  event.preventDefault();
+  const password = $("#account-new-password").value;
+  const confirm = $("#account-confirm-password").value;
 
-  if (hrApplicable && !value("#hr-representative")) gaps.push("Assign an HR representative or focal person");
-  if (value("#hr-collaboration-status") === "Required" && !value("#hr-impact-summary")) {
-    gaps.push("Document the people and workforce impact summary");
+  if (password !== confirm) return showToast("The passwords do not match.", true);
+  if (!isStrongPassword(password)) {
+    return showToast("Use at least 10 characters with uppercase, lowercase, number and symbol.", true);
   }
 
-  elements.readinessScore.textContent = `${score}%`;
-  elements.readinessBar.style.width = `${score}%`;
-  elements.readinessRecommendation.textContent = recommendation;
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return showToast(error.message, true);
 
-  const riskMessage = risk === "Extreme"
-    ? "Extreme residual risk requires escalation regardless of the calculated score."
-    : risk === "High"
-      ? "High residual risk requires explicit treatment, ownership and authorised acceptance."
-      : "Use the score together with evidence, residual risk and management judgement.";
+  await supabase.from("profiles").update({
+    password_changed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }).eq("id", currentUser.id);
 
-  elements.readinessAdvice.innerHTML = `<strong>${escapeHtml(recommendation)}:</strong> ${escapeHtml(riskMessage)}`;
-  elements.readinessGaps.innerHTML = gaps.length
-    ? `<ul>${gaps.map(gap => `<li>${escapeHtml(gap)}</li>`).join("")}</ul>`
-    : '<div class="notice blue"><strong>No material checklist gaps recorded.</strong> Confirm evidence remains current before the decision.</div>';
-
-  return { score, recommendation, gaps, categoryScores };
+  $("#change-password-form").reset();
+  showToast("Password updated successfully.");
 }
 
-function buildReview() {
-  const assessment = calculateReadiness();
-  const hrStatus = value("#hr-collaboration-status");
-  const hrAreas = selectedHrAreas();
+function showModule(name) {
+  $$(".module").forEach(module => module.classList.remove("active"));
+  $$(".nav-item").forEach(button => button.classList.remove("active"));
 
-  const fields = [
-    ["Initiative", value("#initiative-name")],
-    ["Department", value("#department")],
-    ["HOME31 pillar", value("#strategic-pillar")],
-    ["Current phase", value("#current-phase")],
-    ["Accountable owner", value("#accountable-owner")],
-    ["Status", value("#status")],
-    ["Progress", `${value("#progress")}%`],
-    ["Risk level", value("#risk-level")],
-    ["Readiness", `${assessment.score}% — ${assessment.recommendation}`],
-    ["HR collaboration", hrStatus],
-    ["Problem or opportunity", value("#problem-opportunity"), true],
-    ["Expected outcome", value("#enterprise-outcome"), true],
-    ["Value target", value("#value-target") || "Not specified", true],
-    ["Next action", value("#next-action") || "Not specified", true],
-    ["Readiness gaps", assessment.gaps.join("; ") || "No material checklist gaps recorded", true]
-  ];
+  const module = $(`#module-${name}`);
+  const nav = $(`.nav-item[data-module="${name}"]`);
+  if (!module) return;
 
-  if (hrStatus !== "Not required") {
-    fields.push(
-      ["HR engagement", `${value("#hr-engagement-stage")} — ${value("#hr-representative") || "Representative not assigned"}`, true],
-      ["People impact", value("#hr-impact-summary") || "To be confirmed", true],
-      ["HR collaboration areas", hrAreas.join(", ") || "To be confirmed", true]
-    );
-  }
+  module.classList.add("active");
+  nav?.classList.add("active");
+  $("#page-title").textContent = nav?.querySelector("b")?.textContent || "HOME31";
+  $("#sidebar").classList.remove("open");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
-  elements.reviewSummary.innerHTML = fields.map(([label, content, full]) => `
-    <article class="review-card ${full ? "full" : ""}">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(content)}</strong>
-    </article>
-  `).join("");
+  if (name === "user-home") renderUserDashboard();
+  if (name === "my-initiatives") renderUserInitiatives();
+  if (name === "readiness") renderReadiness();
+  if (name === "admin-overview") renderAdminOverview();
+  if (name === "admin-portfolio") renderAdminPortfolio();
+  if (name === "admin-users") renderAdminUsers();
+  if (name === "admin-exceptions") renderAdminExceptions();
 }
 
-async function submitProject() {
-  if (!currentUser) return showToast("Please sign in.", true);
-  if (!elements.projectForm.reportValidity()) {
-    showStep(1);
-    return;
-  }
-
-  const id = elements.projectId.value;
-  const record = collectRecord();
-
-  elements.submitButton.disabled = true;
-  elements.submitButton.textContent = id ? "Updating..." : "Saving...";
-
-  let result;
-  if (id) result = await supabase.from("projects").update(record).eq("id", id);
-  else result = await supabase.from("projects").insert(record);
-
-  elements.submitButton.disabled = false;
-  elements.submitButton.textContent = "Save to Portfolio";
-
-  if (result.error) return showToast(result.error.message, true);
-
-  showToast(id ? "Initiative updated." : "Initiative saved to the portfolio.");
-  resetForm();
-  await loadProjects();
-  $("#portfolio").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function collectRecord() {
-  const assessment = calculateReadiness();
-  return {
-    initiative_name: value("#initiative-name"),
-    department: value("#department"),
-    strategic_pillar: value("#strategic-pillar"),
-    executive_sponsor: nullableValue("#executive-sponsor"),
-    accountable_owner: value("#accountable-owner"),
-    delivery_lead: nullableValue("#delivery-lead"),
-    status: value("#status"),
-    current_phase: value("#current-phase"),
-    progress: Number(value("#progress")),
-    target_date: nullableValue("#target-date"),
-    problem_opportunity: value("#problem-opportunity"),
-    enterprise_outcome: value("#enterprise-outcome"),
-    value_target: nullableValue("#value-target"),
-    next_action: nullableValue("#next-action"),
-    risk_level: value("#risk-level"),
-
-    strategic_alignment_confirmed: $("#check-strategy").checked,
-    ownership_confirmed: $("#check-owner").checked,
-    scope_dependencies_defined: $("#check-scope").checked,
-    value_case_prepared: $("#check-value-case").checked,
-    kpi_defined: $("#check-kpi").checked,
-    funding_view_available: $("#check-budget").checked,
-    risk_compliance_reviewed: $("#check-risk").checked,
-    data_cyber_architecture_reviewed: $("#check-data").checked,
-    impact_reviewed: $("#check-data").checked,
-    procurement_vendor_reviewed: $("#check-procurement").checked,
-    delivery_plan_ready: $("#check-delivery").checked,
-    operational_readiness_reviewed: $("#check-operations").checked,
-    change_stakeholder_plan: $("#check-change").checked,
-
-    hr_collaboration_status: value("#hr-collaboration-status"),
-    hr_engagement_stage: nullableValue("#hr-engagement-stage"),
-    hr_representative: nullableValue("#hr-representative"),
-    hr_impact_summary: nullableValue("#hr-impact-summary"),
-    hr_collaboration_areas: selectedHrAreas(),
-    hr_engaged_early: $("#check-hr-engaged").checked,
-    hr_people_impact_assessed: $("#check-hr-impact").checked,
-    hr_workforce_plan: $("#check-hr-workforce").checked,
-    hr_skills_training_plan: $("#check-hr-skills").checked,
-    hr_change_comms_plan: $("#check-hr-change").checked,
-
-    assessment_note: nullableValue("#assessment-note"),
-    readiness_score: assessment.score,
-    readiness_recommendation: assessment.recommendation,
-    readiness_gaps: assessment.gaps,
-    readiness_category_scores: assessment.categoryScores,
-    created_by:
-      currentProfile?.role === "super_admin" && elements.adminRecordOwner.value
-        ? elements.adminRecordOwner.value
-        : currentUser.id
-  };
-}
-
-function selectedHrAreas() {
-  return $$("input[name='hr-area']:checked").map(input => input.value);
-}
-
-async function loadProjects() {
-  if (!currentUser) return;
-
-  showPortfolioMessage("Loading initiatives...");
+async function loadUserProjects() {
   const { data, error } = await supabase
-    .from("projects")
+    .from("initiatives")
     .select("*")
     .eq("created_by", currentUser.id)
     .order("updated_at", { ascending: false });
 
-  if (error) {
-    showPortfolioMessage(error.message, true);
-    return;
-  }
-
-  projects = data ?? [];
-  hidePortfolioMessage();
-  renderProjects();
-  renderKpis();
+  if (error) return showToast(error.message, true);
+  userProjects = data || [];
+  renderUserDashboard();
+  renderUserInitiatives();
+  renderReadiness();
 }
 
-function renderProjects() {
-  if (!currentUser) {
-    elements.portfolioList.innerHTML = "";
-    return;
-  }
+function renderUserDashboard() {
+  const total = userProjects.length;
+  const inProgress = userProjects.filter(project => project.status === "In Progress").length;
+  const atRisk = userProjects.filter(project =>
+    project.status === "At Risk" || ["High", "Extreme"].includes(project.risk_level)
+  ).length;
+  const average = total
+    ? Math.round(userProjects.reduce((sum, project) => sum + Number(project.progress || 0), 0) / total)
+    : 0;
 
-  if (!projects.length) {
-    elements.portfolioList.innerHTML =
-      '<div class="notice blue">No initiatives have been submitted. Select “New Initiative” to create the first record.</div>';
-    return;
-  }
+  $("#user-kpi-total").textContent = total;
+  $("#user-kpi-progress").textContent = inProgress;
+  $("#user-kpi-risk").textContent = atRisk;
+  $("#user-kpi-average").textContent = `${average}%`;
 
-  elements.portfolioList.innerHTML = projects.map(project => {
-    const progress = clamp(Number(project.progress) || 0, 0, 100);
-    const hrRequired = project.hr_collaboration_status && project.hr_collaboration_status !== "Not required";
-    return `
-      <article class="project-card">
-        <div class="project-card-head">
+  $("#user-recent-table tbody").innerHTML = userProjects.slice(0, 6).map(project => `
+    <tr>
+      <td><strong>${escapeHtml(project.initiative_name)}</strong></td>
+      <td>${escapeHtml(project.strategic_pillar)}</td>
+      <td><span class="status-pill">${escapeHtml(project.status)}</span></td>
+      <td>${Number(project.readiness_score || 0)}%</td>
+      <td>${progressBar(project.progress)}</td>
+    </tr>
+  `).join("");
+
+  const gaps = userProjects.filter(project => Number(project.readiness_score || 0) < 70);
+  $("#user-gap-list").innerHTML = gaps.length
+    ? gaps.slice(0, 6).map(project => futureItem(project, `${project.readiness_score}% readiness`)).join("")
+    : '<div class="notice blue">No initiatives below 70% readiness.</div>';
+
+  renderUserStatusChart();
+}
+
+function renderUserStatusChart() {
+  charts.userStatus?.destroy();
+  if (typeof Chart === "undefined") return;
+
+  const statuses = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
+  charts.userStatus = new Chart($("#user-status-chart"), {
+    type: "doughnut",
+    data: {
+      labels: statuses,
+      datasets: [{
+        data: statuses.map(status => userProjects.filter(project => project.status === status).length)
+      }]
+    },
+    options: baseChartOptions()
+  });
+}
+
+function renderUserInitiatives() {
+  const query = ($("#user-search").value || "").toLowerCase();
+  const status = $("#user-status-filter").value || "";
+
+  const filtered = userProjects.filter(project =>
+    (!query || project.initiative_name.toLowerCase().includes(query)) &&
+    (!status || project.status === status)
+  );
+
+  $("#user-initiative-list").innerHTML = filtered.length
+    ? filtered.map(project => initiativeCard(project, false)).join("")
+    : '<div class="notice blue">No matching initiatives.</div>';
+
+  $$("[data-edit-project]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal(button.dataset.editProject))
+  );
+  $$("[data-delete-project]").forEach(button =>
+    button.addEventListener("click", () => deleteInitiative(button.dataset.deleteProject))
+  );
+}
+
+function renderReadiness() {
+  const total = userProjects.length;
+  const average = total
+    ? Math.round(userProjects.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
+    : 0;
+  const low = userProjects.filter(project => Number(project.readiness_score || 0) < 70).length;
+  const hr = userProjects.filter(project => ["Required", "To be confirmed"].includes(project.hr_collaboration_status)).length;
+  const risk = userProjects.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
+
+  $("#readiness-average").textContent = `${average}%`;
+  $("#readiness-low").textContent = low;
+  $("#readiness-hr").textContent = hr;
+  $("#readiness-risk").textContent = risk;
+
+  $("#readiness-list").innerHTML = userProjects.length
+    ? userProjects.map(project => `
+      <article class="readiness-card">
+        <div class="initiative-card-head">
           <div>
-            <h3>${escapeHtml(project.initiative_name)}${hrRequired ? '<span class="hr-tag">HR</span>' : ""}</h3>
-            <p class="project-meta">
-              ${escapeHtml(project.strategic_pillar)} · ${escapeHtml(project.department)} · ${escapeHtml(project.current_phase || "Phase not specified")}
-            </p>
+            <strong>${escapeHtml(project.initiative_name)}</strong>
+            <span>${escapeHtml(project.strategic_pillar)} · ${escapeHtml(project.risk_level)} risk</span>
           </div>
-          <span class="status-badge">${escapeHtml(project.status)}</span>
+          <span class="status-pill">${Number(project.readiness_score || 0)}% ready</span>
         </div>
-
-        <p><strong>Owner:</strong> ${escapeHtml(project.accountable_owner)}</p>
-        <p><strong>Outcome:</strong> ${escapeHtml(project.enterprise_outcome)}</p>
-        <p><strong>Readiness:</strong> ${Number(project.readiness_score) || 0}% · ${escapeHtml(project.readiness_recommendation || "Not assessed")} · ${escapeHtml(project.risk_level)} risk</p>
-        ${hrRequired ? `<p><strong>HR collaboration:</strong> ${escapeHtml(project.hr_collaboration_status)} · ${escapeHtml(project.hr_engagement_stage || "Stage not recorded")}</p>` : ""}
-
-        <div class="progress-row">
-          <span>Delivery progress</span>
-          <strong>${progress}%</strong>
-        </div>
-        <div class="progress-track"><span style="width:${progress}%"></span></div>
-
-        <div class="project-actions">
-          <button class="button secondary small" type="button" data-edit="${project.id}">Edit</button>
-          <button class="danger-button" type="button" data-delete="${project.id}">Delete</button>
-        </div>
+        <div class="progress-track"><span style="width:${Number(project.readiness_score || 0)}%"></span></div>
+        <span>HR collaboration: ${escapeHtml(project.hr_collaboration_status || "Not required")}</span>
       </article>
+    `).join("")
+    : '<div class="notice blue">No initiatives available.</div>';
+}
+
+async function loadAdminData() {
+  if (currentProfile?.role !== "super_admin") return;
+
+  const [projectsResponse, profilesResponse] = await Promise.all([
+    supabase.from("initiatives").select("*").order("updated_at", { ascending: false }),
+    supabase.from("profiles").select("*").order("created_at", { ascending: false })
+  ]);
+
+  if (projectsResponse.error) return showToast(projectsResponse.error.message, true);
+  if (profilesResponse.error) return showToast(profilesResponse.error.message, true);
+
+  adminProjects = projectsResponse.data || [];
+  adminProfiles = profilesResponse.data || [];
+  populateOwnerOptions();
+  renderAdminOverview();
+  renderAdminPortfolio();
+  renderAdminUsers();
+  renderAdminExceptions();
+}
+
+function renderAdminOverview() {
+  if (currentProfile?.role !== "super_admin") return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const total = adminProjects.length;
+  const health = total
+    ? Math.round(adminProjects.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
+    : 0;
+  const risk = adminProjects.filter(project =>
+    project.status === "At Risk" || ["High", "Extreme"].includes(project.risk_level)
+  ).length;
+  const hr = adminProjects.filter(project => ["Required", "To be confirmed"].includes(project.hr_collaboration_status)).length;
+  const overdue = adminProjects.filter(project =>
+    project.target_date && project.target_date < today && project.status !== "Completed"
+  ).length;
+
+  $("#admin-kpi-total").textContent = total;
+  $("#admin-kpi-health").textContent = `${health}%`;
+  $("#admin-kpi-risk").textContent = risk;
+  $("#admin-kpi-hr").textContent = hr;
+  $("#admin-kpi-overdue").textContent = overdue;
+  $("#admin-kpi-users").textContent = adminProfiles.length;
+
+  renderAdminCharts();
+}
+
+function renderAdminCharts() {
+  ["adminStatus", "adminPillar", "adminRisk", "adminDepartment"].forEach(key => charts[key]?.destroy());
+  if (typeof Chart === "undefined") return;
+
+  const statuses = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
+  const risks = ["Low", "Medium", "High", "Extreme"];
+
+  charts.adminStatus = new Chart($("#admin-status-chart"), {
+    type: "doughnut",
+    data: {
+      labels: statuses,
+      datasets: [{ data: statuses.map(status => adminProjects.filter(project => project.status === status).length) }]
+    },
+    options: baseChartOptions()
+  });
+
+  charts.adminPillar = new Chart($("#admin-pillar-chart"), {
+    type: "bar",
+    data: {
+      labels: pillars,
+      datasets: [{ label: "Initiatives", data: pillars.map(pillar => adminProjects.filter(project => project.strategic_pillar === pillar).length), borderRadius: 8 }]
+    },
+    options: { ...baseChartOptions(), indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  charts.adminRisk = new Chart($("#admin-risk-chart"), {
+    type: "pie",
+    data: {
+      labels: risks,
+      datasets: [{ data: risks.map(risk => adminProjects.filter(project => project.risk_level === risk).length) }]
+    },
+    options: baseChartOptions()
+  });
+
+  const departments = [...new Set(adminProjects.map(project => project.department || "Not recorded"))];
+  charts.adminDepartment = new Chart($("#admin-department-chart"), {
+    type: "bar",
+    data: {
+      labels: departments,
+      datasets: [{
+        label: "Average readiness",
+        data: departments.map(department => {
+          const records = adminProjects.filter(project => (project.department || "Not recorded") === department);
+          return records.length
+            ? Math.round(records.reduce((sum, record) => sum + Number(record.readiness_score || 0), 0) / records.length)
+            : 0;
+        }),
+        borderRadius: 8
+      }]
+    },
+    options: { ...baseChartOptions(), scales: { y: { min: 0, max: 100 } } }
+  });
+}
+
+function renderAdminPortfolio() {
+  if (currentProfile?.role !== "super_admin") return;
+
+  const query = ($("#admin-search").value || "").toLowerCase();
+  const status = $("#admin-status-filter").value || "";
+  const pillar = $("#admin-pillar-filter").value || "";
+  const risk = $("#admin-risk-filter").value || "";
+
+  const filtered = adminProjects.filter(project => {
+    const profile = profileFor(project.created_by);
+    const haystack = [
+      project.initiative_name,
+      project.accountable_owner,
+      project.department,
+      profile?.full_name,
+      profile?.email
+    ].join(" ").toLowerCase();
+
+    return (!query || haystack.includes(query)) &&
+      (!status || project.status === status) &&
+      (!pillar || project.strategic_pillar === pillar) &&
+      (!risk || project.risk_level === risk);
+  });
+
+  $("#admin-portfolio-table tbody").innerHTML = filtered.map(project => {
+    const profile = profileFor(project.created_by);
+    return `
+      <tr>
+        <td><strong>${escapeHtml(project.initiative_name)}</strong></td>
+        <td>${escapeHtml(profile?.full_name || profile?.email || "Unknown")}</td>
+        <td>${escapeHtml(project.department)}</td>
+        <td>${escapeHtml(project.strategic_pillar)}</td>
+        <td><span class="status-pill">${escapeHtml(project.status)}</span></td>
+        <td><span class="risk-pill">${escapeHtml(project.risk_level)}</span></td>
+        <td>${Number(project.readiness_score || 0)}%</td>
+        <td>${progressBar(project.progress)}</td>
+        <td><button class="text-button" data-admin-edit="${project.id}" type="button">Edit</button></td>
+      </tr>
     `;
   }).join("");
 
-  $$('[data-edit]').forEach(button => {
-    button.addEventListener("click", () => editProject(button.dataset.edit));
-  });
-  $$('[data-delete]').forEach(button => {
-    button.addEventListener("click", () => deleteProject(button.dataset.delete));
-  });
+  $$("[data-admin-edit]").forEach(button =>
+    button.addEventListener("click", () => openInitiativeModal(button.dataset.adminEdit))
+  );
 }
 
-function renderKpis() {
-  const total = projects.length;
-  const inProgress = projects.filter(project => project.status === "In Progress").length;
-  const atRisk = projects.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
-  const hrCount = projects.filter(project => project.hr_collaboration_status && project.hr_collaboration_status !== "Not required").length;
-  const averageReadiness = total
-    ? Math.round(projects.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
-    : 0;
-
-  $("#kpi-total").textContent = total;
-  $("#kpi-progress").textContent = inProgress;
-  $("#kpi-risk").textContent = atRisk;
-  $("#kpi-average").textContent = `${averageReadiness}%`;
-  $("#kpi-hr").textContent = hrCount;
+function clearAdminFilters() {
+  $("#admin-search").value = "";
+  $("#admin-status-filter").value = "";
+  $("#admin-pillar-filter").value = "";
+  $("#admin-risk-filter").value = "";
+  renderAdminPortfolio();
 }
 
-function editProject(id) {
-  const project = projects.find(item => String(item.id) === String(id));
-  if (!project) return;
+function renderAdminUsers() {
+  if (currentProfile?.role !== "super_admin") return;
 
-  setValue("#project-id", project.id);
-  if (currentProfile?.role === "super_admin" && elements.adminRecordOwner) {
-    elements.adminRecordOwner.value = project.created_by || currentUser.id;
+  $("#admin-user-list").innerHTML = adminProfiles.map(profile => `
+    <article class="admin-user-card">
+      <div>
+        <strong>${escapeHtml(profile.full_name || profile.email)}</strong>
+        <span>${escapeHtml(profile.email)} · ${escapeHtml(profile.department || "No department")}</span>
+        <span>Password change required: ${profile.must_change_password ? "Yes" : "No"}</span>
+      </div>
+      <div>
+        <span class="role-pill">${labelRole(profile.role)}</span>
+        ${profile.id !== currentUser.id ? `
+          <button class="text-button" data-toggle-role="${profile.id}" type="button">
+            ${profile.role === "super_admin" ? "Make Normal User" : "Make Super Admin"}
+          </button>
+        ` : ""}
+      </div>
+    </article>
+  `).join("");
+
+  $$("[data-toggle-role]").forEach(button =>
+    button.addEventListener("click", () => toggleRole(button.dataset.toggleRole))
+  );
+}
+
+async function createUserAsAdmin(event) {
+  event.preventDefault();
+  if (currentProfile?.role !== "super_admin") return;
+
+  const password = $("#admin-user-password").value;
+  if (!isStrongPassword(password)) {
+    return showToast("Temporary password must contain at least 10 characters with uppercase, lowercase, number and symbol.", true);
   }
-  setValue("#initiative-name", project.initiative_name);
-  setValue("#department", project.department);
-  setValue("#strategic-pillar", project.strategic_pillar);
-  setValue("#executive-sponsor", project.executive_sponsor);
-  setValue("#accountable-owner", project.accountable_owner);
-  setValue("#delivery-lead", project.delivery_lead);
-  setValue("#status", project.status);
-  setValue("#current-phase", project.current_phase || "Idea / Intake");
-  setValue("#progress", project.progress);
-  setValue("#target-date", project.target_date);
-  setValue("#problem-opportunity", project.problem_opportunity);
-  setValue("#enterprise-outcome", project.enterprise_outcome);
-  setValue("#value-target", project.value_target);
-  setValue("#next-action", project.next_action);
-  setValue("#risk-level", project.risk_level || "Medium");
 
-  setChecked("#check-strategy", project.strategic_alignment_confirmed);
-  setChecked("#check-owner", project.ownership_confirmed);
-  setChecked("#check-scope", project.scope_dependencies_defined);
-  setChecked("#check-value-case", project.value_case_prepared);
-  setChecked("#check-kpi", project.kpi_defined);
-  setChecked("#check-budget", project.funding_view_available);
-  setChecked("#check-risk", project.risk_compliance_reviewed);
-  setChecked("#check-data", project.data_cyber_architecture_reviewed ?? project.impact_reviewed);
-  setChecked("#check-procurement", project.procurement_vendor_reviewed);
-  setChecked("#check-delivery", project.delivery_plan_ready);
-  setChecked("#check-operations", project.operational_readiness_reviewed);
-  setChecked("#check-change", project.change_stakeholder_plan);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return showToast("Your session has expired. Sign in again.", true);
 
-  setValue("#hr-collaboration-status", project.hr_collaboration_status || "Not required");
-  setValue("#hr-engagement-stage", project.hr_engagement_stage || "Not started");
-  setValue("#hr-representative", project.hr_representative);
-  setValue("#hr-impact-summary", project.hr_impact_summary);
-  setChecked("#check-hr-engaged", project.hr_engaged_early);
-  setChecked("#check-hr-impact", project.hr_people_impact_assessed);
-  setChecked("#check-hr-workforce", project.hr_workforce_plan);
-  setChecked("#check-hr-skills", project.hr_skills_training_plan);
-  setChecked("#check-hr-change", project.hr_change_comms_plan);
-  setValue("#assessment-note", project.assessment_note);
-
-  const selectedAreas = new Set(project.hr_collaboration_areas || []);
-  $$("input[name='hr-area']").forEach(input => {
-    input.checked = selectedAreas.has(input.value);
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": SUPABASE_PUBLISHABLE_KEY
+    },
+    body: JSON.stringify({
+      full_name: $("#admin-user-name").value.trim(),
+      department: $("#admin-user-department").value.trim(),
+      email: $("#admin-user-email").value.trim().toLowerCase(),
+      password
+    })
   });
 
-  updateHrVisibility();
-  calculateReadiness();
-  showStep(1);
-  showToast("Initiative loaded for editing.");
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) return showToast(payload.error || `User creation failed with HTTP ${response.status}.`, true);
+
+  $("#admin-create-user-form").reset();
+  showToast("Active normal user created. The user must change the temporary password at first login.");
+  await loadAdminData();
 }
 
-async function deleteProject(id) {
-  const project = projects.find(item => String(item.id) === String(id));
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  const random = new Uint32Array(14);
+  crypto.getRandomValues(random);
+  $("#admin-user-password").value = Array.from(random, value => alphabet[value % alphabet.length]).join("");
+}
+
+async function toggleRole(profileId) {
+  const profile = adminProfiles.find(item => item.id === profileId);
+  if (!profile) return;
+
+  const newRole = profile.role === "super_admin" ? "normal_user" : "super_admin";
+  const { error } = await supabase.rpc("admin_set_user_role", {
+    target_user_id: profileId,
+    new_role: newRole
+  });
+
+  if (error) return showToast(error.message, true);
+  showToast(`Role updated to ${labelRole(newRole)}.`);
+  await loadAdminData();
+}
+
+function renderAdminExceptions() {
+  if (currentProfile?.role !== "super_admin") return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const risk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level));
+  const readiness = adminProjects.filter(project => Number(project.readiness_score || 0) < 70);
+  const overdue = adminProjects.filter(project =>
+    project.target_date && project.target_date < today && project.status !== "Completed"
+  );
+
+  $("#admin-exception-risk-count").textContent = risk.length;
+  $("#admin-exception-readiness-count").textContent = readiness.length;
+  $("#admin-exception-overdue-count").textContent = overdue.length;
+
+  $("#admin-exception-risk-list").innerHTML = listOrEmpty(risk, project => `${project.risk_level} risk · ${project.status}`);
+  $("#admin-exception-readiness-list").innerHTML = listOrEmpty(readiness, project => `${project.readiness_score}% readiness`);
+  $("#admin-exception-overdue-list").innerHTML = listOrEmpty(overdue, project => `Target ${project.target_date}`);
+}
+
+function openInitiativeModal(projectId = null) {
+  $("#initiative-form").reset();
+  $("#initiative-id").value = "";
+  $("#initiative-status").value = "Planning";
+  $("#initiative-risk").value = "Medium";
+  $("#initiative-progress").value = "0";
+  $("#initiative-readiness").value = "50";
+  $("#initiative-hr").value = "Not required";
+  $("#initiative-created-by").value = currentUser.id;
+  $("#initiative-modal-title").textContent = projectId ? "Edit Initiative" : "Create Initiative";
+
+  const source = currentProfile?.role === "super_admin" ? adminProjects : userProjects;
+  const project = source.find(item => String(item.id) === String(projectId));
+
+  if (project) {
+    $("#initiative-id").value = project.id;
+    $("#initiative-created-by").value = project.created_by;
+    $("#initiative-name").value = project.initiative_name || "";
+    $("#initiative-department").value = project.department || "";
+    $("#initiative-owner").value = project.accountable_owner || "";
+    $("#initiative-pillar").value = project.strategic_pillar || pillars[0];
+    $("#initiative-status").value = project.status || "Planning";
+    $("#initiative-risk").value = project.risk_level || "Medium";
+    $("#initiative-progress").value = project.progress || 0;
+    $("#initiative-readiness").value = project.readiness_score || 0;
+    $("#initiative-target-date").value = project.target_date || "";
+    $("#initiative-hr").value = project.hr_collaboration_status || "Not required";
+    $("#initiative-problem").value = project.problem_opportunity || "";
+    $("#initiative-outcome").value = project.expected_outcome || "";
+    $("#initiative-next-action").value = project.next_action || "";
+  }
+
+  $("#initiative-modal").classList.remove("hidden");
+}
+
+function closeInitiativeModal() {
+  $("#initiative-modal").classList.add("hidden");
+}
+
+async function saveInitiative(event) {
+  event.preventDefault();
+  const id = $("#initiative-id").value;
+  const createdBy =
+    currentProfile?.role === "super_admin" && $("#initiative-created-by").value
+      ? $("#initiative-created-by").value
+      : currentUser.id;
+
+  const record = {
+    initiative_name: $("#initiative-name").value.trim(),
+    department: $("#initiative-department").value.trim(),
+    accountable_owner: $("#initiative-owner").value.trim(),
+    strategic_pillar: $("#initiative-pillar").value,
+    status: $("#initiative-status").value,
+    risk_level: $("#initiative-risk").value,
+    progress: Number($("#initiative-progress").value),
+    readiness_score: Number($("#initiative-readiness").value),
+    target_date: $("#initiative-target-date").value || null,
+    hr_collaboration_status: $("#initiative-hr").value,
+    problem_opportunity: $("#initiative-problem").value.trim(),
+    expected_outcome: $("#initiative-outcome").value.trim(),
+    next_action: $("#initiative-next-action").value.trim() || null,
+    created_by: createdBy,
+    updated_at: new Date().toISOString()
+  };
+
+  let response;
+  if (id) {
+    response = await supabase.from("initiatives").update(record).eq("id", id);
+  } else {
+    response = await supabase.from("initiatives").insert(record);
+  }
+
+  if (response.error) return showToast(response.error.message, true);
+
+  closeInitiativeModal();
+  showToast(id ? "Initiative updated." : "Initiative created.");
+
+  await loadUserProjects();
+  if (currentProfile.role === "super_admin") await loadAdminData();
+}
+
+async function deleteInitiative(projectId) {
+  const project = userProjects.find(item => String(item.id) === String(projectId));
   if (!project) return;
+  if (!window.confirm(`Delete "${project.initiative_name}"?`)) return;
 
-  const confirmed = window.confirm(`Delete "${project.initiative_name}"?`);
-  if (!confirmed) return;
-
-  const { error } = await supabase.from("projects").delete().eq("id", id);
+  const { error } = await supabase.from("initiatives").delete().eq("id", projectId);
   if (error) return showToast(error.message, true);
 
   showToast("Initiative deleted.");
-  await loadProjects();
+  await loadUserProjects();
 }
 
-function startNewInitiative() {
-  if (!currentUser) {
-    $("#auth-section").scrollIntoView({ behavior: "smooth", block: "start" });
-    return showToast("Sign in before creating an initiative.", true);
-  }
+function populatePillars() {
+  ["#initiative-pillar", "#admin-pillar-filter"].forEach(selector => {
+    const element = $(selector);
+    if (!element) return;
 
-  resetForm();
-  if (currentProfile?.role === "super_admin") {
-    elements.adminRecordOwner.value = currentUser.id;
-    showToast("Admin data-entry mode opened. Choose the record owner before submission.");
-  }
-  showStep(1);
+    if (selector === "#admin-pillar-filter") {
+      element.innerHTML = '<option value="">All pillars</option>';
+    }
+
+    element.insertAdjacentHTML(
+      "beforeend",
+      pillars.map(pillar => `<option>${escapeHtml(pillar)}</option>`).join("")
+    );
+  });
 }
 
-function resetForm() {
-  elements.projectForm.reset();
-  elements.projectId.value = "";
-  if (currentProfile?.role === "super_admin" && elements.adminRecordOwner) {
-    elements.adminRecordOwner.value = currentUser?.id || "";
-  }
-  $("#progress").value = "0";
-  $("#status").value = "Planning";
-  $("#current-phase").value = "Idea / Intake";
-  $("#risk-level").value = "Medium";
-  $("#hr-collaboration-status").value = "Not required";
-  $("#hr-engagement-stage").value = "Not started";
-  ALL_READINESS_SELECTORS.forEach(selector => { $(selector).checked = false; });
-  $$("input[name='hr-area']").forEach(input => { input.checked = false; });
-  $("#assessment-note").value = "";
-  updateHrVisibility();
-  calculateReadiness();
-  buildReview();
-  showStep(1);
-}
-
-function loadSample() {
-  if (!currentUser) {
-    $("#auth-section").scrollIntoView({ behavior: "smooth", block: "start" });
-    return showToast("Sign in first, then load the sample.", true);
-  }
-
-  setValue("#initiative-name", "AI-Driven Document Verification");
-  setValue("#department", "Corporate Planning & Strategy");
-  setValue("#strategic-pillar", "Digital & Data Transformation");
-  setValue("#executive-sponsor", "Executive Management Committee");
-  setValue("#accountable-owner", "Head of Business Operations");
-  setValue("#delivery-lead", "Programme Manager");
-  setValue("#status", "Planning");
-  setValue("#current-phase", "Business Case");
-  setValue("#progress", "15");
-  setValue("#problem-opportunity", "Manual document checking increases turnaround time, creates inconsistent verification outcomes and requires significant repetitive staff effort.");
-  setValue("#enterprise-outcome", "Improve processing speed, control consistency, customer service reliability and employee capacity for higher-value work.");
-  setValue("#value-target", "Reduce verification time from 2 working days to 4 hours and redeploy 20% of manual checking effort by December 2027.");
-  setValue("#next-action", "Complete data, cyber, process and workforce impact assessments.");
-  setValue("#risk-level", "Medium");
-
-  ["#check-strategy", "#check-owner", "#check-scope", "#check-value-case", "#check-kpi", "#check-risk"]
-    .forEach(selector => { $(selector).checked = true; });
-  ["#check-budget", "#check-data", "#check-procurement", "#check-delivery", "#check-operations", "#check-change"]
-    .forEach(selector => { $(selector).checked = false; });
-
-  setValue("#hr-collaboration-status", "Required");
-  setValue("#hr-engagement-stage", "Initial discussion");
-  setValue("#hr-representative", "HR Business Partner");
-  setValue("#hr-impact-summary", "The initiative may reduce repetitive verification tasks, change role profiles, require reskilling and support the redeployment of staff to exception handling and customer support.");
-  ["#check-hr-engaged", "#check-hr-impact"].forEach(selector => { $(selector).checked = true; });
-  ["#check-hr-workforce", "#check-hr-skills", "#check-hr-change"].forEach(selector => { $(selector).checked = false; });
-  const demoAreas = new Set(["Role profiles & job descriptions", "Recruitment, redeployment or succession", "Skills, training & capability", "Change communication & engagement"]);
-  $$("input[name='hr-area']").forEach(input => { input.checked = demoAreas.has(input.value); });
-  setValue("#assessment-note", "Proceed to detailed assessment only after data, cyber, workforce capacity and change implications are confirmed.");
-
-  updateHrVisibility();
-  calculateReadiness();
-  showStep(1);
-  showToast("Comprehensive sample information loaded. Review it before saving.");
-}
-
-
-
-function showAdminTab(tabName) {
+function populateOwnerOptions() {
   if (currentProfile?.role !== "super_admin") return;
 
-  $$(".admin-tab").forEach(button => {
-    button.classList.toggle("active", button.dataset.adminTab === tabName);
-  });
+  $("#initiative-created-by").innerHTML = adminProfiles.map(profile => `
+    <option value="${profile.id}">
+      ${escapeHtml(profile.full_name || profile.email)} — ${escapeHtml(profile.department || "No department")}
+    </option>
+  `).join("");
+}
 
-  $$(".admin-tab-panel").forEach(panel => {
-    panel.classList.toggle("active", panel.dataset.adminPanel === tabName);
-  });
+function profileFor(userId) {
+  return adminProfiles.find(profile => profile.id === userId);
+}
 
-  if (tabName === "analytics") {
-    window.setTimeout(renderAdminCharts, 80);
-  }
-
-  const firstPanel = document.querySelector(
-    `.admin-tab-panel[data-admin-panel="${tabName}"]`
-  );
-  firstPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+function initiativeCard(project) {
+  return `
+    <article class="initiative-card">
+      <div class="initiative-card-head">
+        <div>
+          <strong>${escapeHtml(project.initiative_name)}</strong>
+          <span>${escapeHtml(project.strategic_pillar)} · ${escapeHtml(project.department)}</span>
+        </div>
+        <span class="status-pill">${escapeHtml(project.status)}</span>
+      </div>
+      <span>Risk: ${escapeHtml(project.risk_level)} · Readiness: ${Number(project.readiness_score || 0)}% · HR: ${escapeHtml(project.hr_collaboration_status || "Not required")}</span>
+      <div class="progress-track"><span style="width:${Number(project.progress || 0)}%"></span></div>
+      <div class="initiative-actions">
+        <button class="button secondary small" data-edit-project="${project.id}" type="button">Edit</button>
+        <button class="text-button" data-delete-project="${project.id}" type="button">Delete</button>
+      </div>
+    </article>
+  `;
 }
 
 function futureItem(project, detail) {
@@ -911,728 +871,67 @@ function futureItem(project, detail) {
   `;
 }
 
-function renderExecutiveOverview() {
-  const today = new Date().toISOString().slice(0, 10);
-  const exceptions = adminProjects.filter(project =>
-    ["High", "Extreme"].includes(project.risk_level) ||
-    Number(project.readiness_score || 0) < 70 ||
-    (project.target_date && project.target_date < today && project.status !== "Completed")
-  );
-  const hrProjects = adminProjects.filter(project =>
-    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
-  );
-  const averageReadiness = adminProjects.length
-    ? Math.round(adminProjects.reduce((sum, p) => sum + Number(p.readiness_score || 0), 0) / adminProjects.length)
-    : 0;
-  const highRisk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
-  const completion = adminProjects.length
-    ? Math.round(adminProjects.filter(project => project.status === "Completed").length / adminProjects.length * 100)
-    : 0;
-
-  let health = "No data";
-  if (adminProjects.length) {
-    if (highRisk === 0 && averageReadiness >= 80 && completion >= 20) health = "Healthy";
-    else if (highRisk <= 2 && averageReadiness >= 65) health = "Watch";
-    else health = "Intervention required";
-  }
-
-  let focus = "Build portfolio data";
-  if (highRisk) focus = "Resolve high-risk exposure";
-  else if (exceptions.some(p => p.target_date && p.target_date < today)) focus = "Recover overdue delivery";
-  else if (adminProjects.some(p => Number(p.readiness_score || 0) < 70)) focus = "Close readiness gaps";
-  else if (hrProjects.length) focus = "Strengthen HR collaboration";
-  else if (adminProjects.length) focus = "Track benefits and completion";
-
-  $("#admin-exec-attention").textContent = `${exceptions.length} initiatives`;
-  $("#admin-exec-health").textContent = health;
-  $("#admin-exec-hr").textContent = `${hrProjects.length} initiatives`;
-  $("#admin-exec-focus").textContent = focus;
+function listOrEmpty(items, detailBuilder) {
+  return items.length
+    ? items.map(project => futureItem(project, detailBuilder(project))).join("")
+    : '<div class="notice blue">No records in this category.</div>';
 }
 
-function renderHrWorkspace() {
-  const hrProjects = adminProjects.filter(project =>
-    ["Required", "To be confirmed"].includes(project.hr_collaboration_status)
-  );
-  const incomplete = hrProjects.filter(project =>
-    !project.hr_engaged_early || !project.hr_people_impact_assessed
-  );
-  const trainingGap = hrProjects.filter(project => !project.hr_skills_training_plan);
-  const changeGap = hrProjects.filter(project => !project.hr_change_comms_plan);
-
-  $("#admin-hr-required").textContent = hrProjects.length;
-  $("#admin-hr-incomplete").textContent = incomplete.length;
-  $("#admin-hr-training-gap").textContent = trainingGap.length;
-  $("#admin-hr-change-gap").textContent = changeGap.length;
-
-  $("#admin-hr-project-list").innerHTML = hrProjects.length
-    ? hrProjects.map(project => futureItem(
-        project,
-        `${project.hr_collaboration_status}; HR stage: ${project.hr_engagement_stage || "Not recorded"}`
-      )).join("")
-    : '<div class="notice blue">No HR-dependent initiatives currently recorded.</div>';
+function progressBar(value) {
+  const progress = Math.max(0, Math.min(100, Number(value || 0)));
+  return `<div>${progress}%</div><div class="progress-track"><span style="width:${progress}%"></span></div>`;
 }
 
-function renderExceptionWorkspace() {
-  const today = new Date().toISOString().slice(0, 10);
-  const risk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level));
-  const readiness = adminProjects.filter(project => Number(project.readiness_score || 0) < 70);
-  const overdue = adminProjects.filter(project =>
-    project.target_date &&
-    project.target_date < today &&
-    project.status !== "Completed"
-  );
-
-  $("#exception-risk-count").textContent = risk.length;
-  $("#exception-readiness-count").textContent = readiness.length;
-  $("#exception-overdue-count").textContent = overdue.length;
-
-  $("#exception-risk-list").innerHTML = risk.length
-    ? risk.map(project => futureItem(project, `${project.risk_level} risk · ${project.status}`)).join("")
-    : '<div class="notice blue">No high or extreme risks.</div>';
-
-  $("#exception-readiness-list").innerHTML = readiness.length
-    ? readiness.map(project => futureItem(project, `${Number(project.readiness_score || 0)}% readiness`)).join("")
-    : '<div class="notice blue">No initiatives below 70% readiness.</div>';
-
-  $("#exception-overdue-list").innerHTML = overdue.length
-    ? overdue.map(project => futureItem(project, `Target ${project.target_date} · ${project.progress || 0}% complete`)).join("")
-    : '<div class="notice blue">No overdue active initiatives.</div>';
-}
-
-async function loadAdminData() {
-  if (currentProfile?.role !== "super_admin") return;
-
-  showAdminProjectMessage("Loading organisation-wide data...");
-
-  const [projectResult, profileResult] = await Promise.all([
-    supabase.from("projects").select("*").order("updated_at", { ascending: false }),
-    supabase.from("profiles").select("*").order("created_at", { ascending: true })
-  ]);
-
-  if (projectResult.error || profileResult.error) {
-    showAdminProjectMessage(projectResult.error?.message || profileResult.error?.message || "Unable to load admin data.", true);
-    return;
-  }
-
-  adminProjects = projectResult.data ?? [];
-  adminProfiles = profileResult.data ?? [];
-  hideAdminProjectMessage();
-  renderAdminKpis();
-  renderExecutiveOverview();
-  renderAdminCharts();
-  renderAdminProjects();
-  renderAdminUsers();
-  renderHrWorkspace();
-  renderExceptionWorkspace();
-  populateAdminRecordOwners();
-}
-
-
-function populateAdminRecordOwners() {
-  if (!elements.adminRecordOwner || currentProfile?.role !== "super_admin") return;
-
-  const currentValue = elements.adminRecordOwner.value || currentUser.id;
-  const options = [
-    { id: currentUser.id, label: `${currentProfile.full_name || currentUser.email} — Super Admin (my entry)` },
-    ...adminProfiles
-      .filter(profile => profile.id !== currentUser.id && profile.role === "normal_user")
-      .map(profile => ({
-        id: profile.id,
-        label: `${profile.full_name || profile.email} — ${profile.department || "No department"}`
-      }))
-  ];
-
-  elements.adminRecordOwner.innerHTML = options
-    .map(option => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.label)}</option>`)
-    .join("");
-
-  elements.adminRecordOwner.value =
-    options.some(option => option.id === currentValue) ? currentValue : currentUser.id;
-}
-
-function countBy(items, key, expectedValues = []) {
-  const counts = Object.fromEntries(expectedValues.map(value => [value, 0]));
-  items.forEach(item => {
-    const value = item[key] || "Not recorded";
-    counts[value] = (counts[value] || 0) + 1;
-  });
-  return counts;
-}
-
-function averageReadinessByDepartment() {
-  const groups = {};
-  adminProjects.forEach(project => {
-    const department = project.department || "Not recorded";
-    if (!groups[department]) groups[department] = { total: 0, count: 0 };
-    groups[department].total += Number(project.readiness_score || 0);
-    groups[department].count += 1;
-  });
-  return Object.entries(groups)
-    .map(([department, data]) => ({
-      department,
-      average: Math.round(data.total / data.count)
-    }))
-    .sort((a, b) => b.average - a.average);
-}
-
-function destroyAdminCharts() {
-  Object.values(adminCharts).forEach(chart => chart?.destroy());
-  adminCharts = {};
-}
-
-function makeChart(canvasId, config) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || typeof Chart === "undefined") return null;
-  return new Chart(canvas, config);
-}
-
-function renderAdminCharts() {
-  destroyAdminCharts();
-
-  const statusOrder = ["Planning", "In Progress", "At Risk", "On Hold", "Completed"];
-  const riskOrder = ["Low", "Medium", "High", "Extreme"];
-  const pillarOrder = [
-    "Financial Sustainability",
-    "Digital & Data Transformation",
-    "Governance Stewardship",
-    "Customer Experience Transformation",
-    "Workforce & Leadership Transformation"
-  ];
-
-  const statusCounts = countBy(adminProjects, "status", statusOrder);
-  const riskCounts = countBy(adminProjects, "risk_level", riskOrder);
-  const pillarCounts = countBy(adminProjects, "strategic_pillar", pillarOrder);
-  const readiness = averageReadinessByDepartment();
-
-  const sharedOptions = {
+function baseChartOptions() {
+  return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } },
-      tooltip: { enabled: true }
+      legend: {
+        position: "bottom",
+        labels: { boxWidth: 10, usePointStyle: true }
+      }
     }
   };
-
-  adminCharts.status = makeChart("admin-status-chart", {
-    type: "doughnut",
-    data: {
-      labels: statusOrder,
-      datasets: [{ data: statusOrder.map(label => statusCounts[label] || 0) }]
-    },
-    options: {
-      ...sharedOptions,
-      onClick: (_event, elements) => {
-        if (!elements.length) return;
-        $("#admin-status-filter").value = statusOrder[elements[0].index];
-        renderAdminProjects();
-        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  });
-
-  adminCharts.pillar = makeChart("admin-pillar-chart", {
-    type: "bar",
-    data: {
-      labels: pillarOrder,
-      datasets: [{ label: "Initiatives", data: pillarOrder.map(label => pillarCounts[label] || 0), borderRadius: 8 }]
-    },
-    options: {
-      ...sharedOptions,
-      indexAxis: "y",
-      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-      onClick: (_event, elements) => {
-        if (!elements.length) return;
-        $("#admin-pillar-filter").value = pillarOrder[elements[0].index];
-        renderAdminProjects();
-        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  });
-
-  adminCharts.risk = makeChart("admin-risk-chart", {
-    type: "pie",
-    data: {
-      labels: riskOrder,
-      datasets: [{ data: riskOrder.map(label => riskCounts[label] || 0) }]
-    },
-    options: {
-      ...sharedOptions,
-      onClick: (_event, elements) => {
-        if (!elements.length) return;
-        $("#admin-risk-filter").value = riskOrder[elements[0].index];
-        renderAdminProjects();
-        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  });
-
-  adminCharts.readiness = makeChart("admin-readiness-chart", {
-    type: "bar",
-    data: {
-      labels: readiness.map(item => item.department),
-      datasets: [{ label: "Average readiness (%)", data: readiness.map(item => item.average), borderRadius: 8 }]
-    },
-    options: {
-      ...sharedOptions,
-      scales: { y: { beginAtZero: true, max: 100 } },
-      plugins: { ...sharedOptions.plugins, legend: { display: false } },
-      onClick: (_event, elements) => {
-        if (!elements.length) return;
-        $("#admin-search").value = readiness[elements[0].index].department;
-        renderAdminProjects();
-        $("#admin-project-list").scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  });
-
-  const topPillar = Object.entries(pillarCounts).sort((a, b) => b[1] - a[1])[0];
-  const attentionDepartment = [...readiness].sort((a, b) => a.average - b.average)[0];
-  const today = new Date().toISOString().slice(0, 10);
-
-  $("#admin-insight-pillar").textContent =
-    topPillar && topPillar[1] > 0 ? `${topPillar[0]} (${topPillar[1]})` : "No data";
-  $("#admin-insight-department").textContent =
-    attentionDepartment ? `${attentionDepartment.department} (${attentionDepartment.average}%)` : "No data";
-  $("#admin-insight-low-readiness").textContent =
-    adminProjects.filter(project => Number(project.readiness_score || 0) < 70).length;
-  $("#admin-insight-overdue").textContent =
-    adminProjects.filter(project =>
-      project.target_date &&
-      project.target_date < today &&
-      project.status !== "Completed"
-    ).length;
 }
 
-function clearAdminChartFilters() {
-  $("#admin-search").value = "";
-  $("#admin-status-filter").value = "";
-  $("#admin-pillar-filter").value = "";
-  $("#admin-risk-filter").value = "";
-  renderAdminProjects();
-  showToast("Chart and portfolio filters cleared.");
-}
-
-function profileFor(userId) {
-  return adminProfiles.find(profile => profile.id === userId) ?? null;
-}
-
-function renderAdminKpis() {
-  const total = adminProjects.length;
-  const risk = adminProjects.filter(project => ["High", "Extreme"].includes(project.risk_level)).length;
-  const hr = adminProjects.filter(project => project.hr_collaboration_status && project.hr_collaboration_status !== "Not required").length;
-  const completed = adminProjects.filter(project => project.status === "Completed").length;
-  const readiness = total
-    ? Math.round(adminProjects.reduce((sum, project) => sum + Number(project.readiness_score || 0), 0) / total)
-    : 0;
-
-  $("#admin-kpi-users").textContent = adminProfiles.length;
-  $("#admin-kpi-projects").textContent = total;
-  $("#admin-kpi-risk").textContent = risk;
-  $("#admin-kpi-readiness").textContent = `${readiness}%`;
-  $("#admin-kpi-hr").textContent = hr;
-  $("#admin-kpi-completed").textContent = completed;
-}
-
-function filteredAdminProjects() {
-  const search = value("#admin-search").toLowerCase();
-  const status = value("#admin-status-filter");
-  const pillar = value("#admin-pillar-filter");
-  const risk = value("#admin-risk-filter");
-
-  return adminProjects.filter(project => {
-    const profile = profileFor(project.created_by);
-    const searchText = [
-      project.initiative_name,
-      project.department,
-      project.accountable_owner,
-      project.strategic_pillar,
-      profile?.full_name,
-      profile?.email
-    ].filter(Boolean).join(" ").toLowerCase();
-
-    return (!search || searchText.includes(search))
-      && (!status || project.status === status)
-      && (!pillar || project.strategic_pillar === pillar)
-      && (!risk || project.risk_level === risk);
-  });
-}
-
-function renderAdminProjects() {
-  const visible = filteredAdminProjects();
-
-  if (!visible.length) {
-    elements.adminProjectList.innerHTML = '<div class="notice blue">No initiatives match the current filters.</div>';
-    return;
-  }
-
-  elements.adminProjectList.innerHTML = visible.map(project => {
-    const profile = profileFor(project.created_by);
-    const ownerIdentity = profile?.full_name || profile?.email || project.created_by;
-    const progress = clamp(Number(project.progress || 0), 0, 100);
-    const hrApplicable = project.hr_collaboration_status && project.hr_collaboration_status !== "Not required";
-
-    return `
-      <article class="admin-project-card">
-        <div class="admin-project-head">
-          <div>
-            <h3>${escapeHtml(project.initiative_name)}</h3>
-            <p class="admin-project-owner">Submitted by ${escapeHtml(ownerIdentity)} · ${escapeHtml(profile?.department || project.department)}</p>
-          </div>
-          <div class="admin-project-tags">
-            <span class="admin-tag">${escapeHtml(project.status)}</span>
-            <span class="admin-tag risk">${escapeHtml(project.risk_level)} risk</span>
-            ${hrApplicable ? '<span class="admin-tag hr">HR collaboration</span>' : ''}
-          </div>
-        </div>
-
-        <div class="admin-project-grid">
-          <article><span>Pillar</span><strong>${escapeHtml(project.strategic_pillar)}</strong></article>
-          <article><span>Department</span><strong>${escapeHtml(project.department)}</strong></article>
-          <article><span>Accountable owner</span><strong>${escapeHtml(project.accountable_owner)}</strong></article>
-          <article><span>Readiness</span><strong>${Number(project.readiness_score || 0)}% · ${escapeHtml(project.readiness_recommendation || "Not assessed")}</strong></article>
-          <article><span>Current phase</span><strong>${escapeHtml(project.current_phase || "Not recorded")}</strong></article>
-          <article><span>Target date</span><strong>${escapeHtml(project.target_date || "Not recorded")}</strong></article>
-          <article><span>Next action</span><strong>${escapeHtml(project.next_action || "Not recorded")}</strong></article>
-          <article><span>Last updated</span><strong>${escapeHtml(formatDate(project.updated_at))}</strong></article>
-        </div>
-
-        <div class="admin-edit-row">
-          <label class="field">
-            <span class="field-title">Status</span>
-            <select data-admin-status="${project.id}">
-              ${["Planning", "In Progress", "At Risk", "On Hold", "Completed"].map(option => `<option${option === project.status ? " selected" : ""}>${option}</option>`).join("")}
-            </select>
-          </label>
-          <label class="field">
-            <span class="field-title">Progress (%)</span>
-            <input data-admin-progress="${project.id}" type="number" min="0" max="100" value="${progress}">
-          </label>
-          <div class="admin-edit-actions">
-            <button class="button secondary small" type="button" data-admin-save="${project.id}">Save Update</button>
-            <button class="danger-button" type="button" data-admin-delete="${project.id}">Delete Record</button>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  $$('[data-admin-save]').forEach(button => {
-    button.addEventListener("click", () => adminUpdateProject(button.dataset.adminSave));
-  });
-  $$('[data-admin-delete]').forEach(button => {
-    button.addEventListener("click", () => adminDeleteProject(button.dataset.adminDelete));
-  });
-}
-
-async function adminUpdateProject(id) {
-  if (currentProfile?.role !== "super_admin") return;
-
-  const status = $(`[data-admin-status="${id}"]`).value;
-  const progress = Number($(`[data-admin-progress="${id}"]`).value);
-  if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
-    return showToast("Progress must be between 0 and 100.", true);
-  }
-
-  const { error } = await supabase
-    .from("projects")
-    .update({ status, progress })
-    .eq("id", id);
-
-  if (error) return showToast(error.message, true);
-  showToast("Project status and progress updated.");
-  await loadAdminData();
-}
-
-async function adminDeleteProject(id) {
-  if (currentProfile?.role !== "super_admin") return;
-  const project = adminProjects.find(item => item.id === id);
-  if (!project) return;
-
-  if (!window.confirm(`Delete "${project.initiative_name}" from the enterprise portfolio?`)) return;
-
-  const { error } = await supabase.from("projects").delete().eq("id", id);
-  if (error) return showToast(error.message, true);
-  showToast("Project record deleted.");
-  await loadAdminData();
-}
-
-
-function updateAdminCreateUserMethod() {
-  const method = value("#admin-new-user-method");
-  const needsPassword = method === "create";
-
-  elements.adminNewUserPasswordField.classList.toggle("hidden", !needsPassword);
-  elements.adminNewUserPassword.required = needsPassword;
-  elements.adminCreateUserButton.textContent =
-    needsPassword ? "Create Active Normal User" : "Send Invitation";
-}
-
-function generateTemporaryPassword() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
-  const random = new Uint32Array(14);
-  crypto.getRandomValues(random);
-  const password = Array.from(random, value => alphabet[value % alphabet.length]).join("");
-  $("#admin-new-user-password").value = password;
-  $("#admin-new-user-method").value = "create";
-  updateAdminCreateUserMethod();
-  showToast("A temporary password was generated.");
-}
-
-async function copyLastCreatedCredentials() {
-  const email = value("#admin-new-user-email") || lastCreatedCredentials?.email;
-  const password = value("#admin-new-user-password") || lastCreatedCredentials?.password;
-  if (!email || !password) {
-    return showToast("Generate or enter a temporary password first.", true);
-  }
-
-  const text = `HOME31 login\nEmail: ${email}\nTemporary password: ${password}\nPlease change the password after first login.`;
-  await navigator.clipboard.writeText(text);
-  showToast("Login details copied. Share them securely.");
-}
-
-async function adminCreateUser(event) {
-  event.preventDefault();
-
-  if (currentProfile?.role !== "super_admin") {
-    return showToast("Only a super admin can add users.", true);
-  }
-
-  const fullName = value("#admin-new-user-name");
-  const department = value("#admin-new-user-department");
-  const email = value("#admin-new-user-email").toLowerCase();
-  const password = value("#admin-new-user-password");
-
-  if (!fullName || !department || !email) {
-    return showToast("Complete the user's name, department and email.", true);
-  }
-
-  if (password.length < 8) {
-    return showToast("The temporary password must contain at least 8 characters.", true);
-  }
-
-  elements.adminCreateUserButton.disabled = true;
-  elements.adminCreateUserButton.textContent = "Creating...";
-
-  const { data, error } = await provisioningClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-        department
-      }
-    }
-  });
-
-  elements.adminCreateUserButton.disabled = false;
-  elements.adminCreateUserButton.textContent = "Create Active Normal User";
-
-  if (error) {
-    return showToast(error.message || "Unable to create the user.", true);
-  }
-
-  if (!data.user) {
-    return showToast("Supabase did not return a newly created user.", true);
-  }
-
-  if (!data.session) {
-    return showToast(
-      "The account was created but is waiting for email confirmation. " +
-      "Disable Confirm email in Supabase Authentication settings for temporary immediate login.",
-      true
-    );
-  }
-
-  lastCreatedCredentials = { email, password };
-
-  elements.adminCreateUserForm.reset();
-  $("#admin-new-user-method").value = "create";
-  updateAdminCreateUserMethod();
-
-  showToast(
-    `Active Normal User created for ${email}. The user can log in immediately.`
-  );
-
-  // The database signup trigger creates the profile. Give it a short moment
-  // before refreshing the directory.
-  window.setTimeout(loadAdminData, 700);
-}
-
-
-function renderAdminUsers() {
-  if (!adminProfiles.length) {
-    elements.adminUserList.innerHTML = '<div class="notice blue">No user profiles are available.</div>';
-    return;
-  }
-
-  elements.adminUserList.innerHTML = adminProfiles.map(profile => {
-    const isSelf = profile.id === currentUser.id;
-    const projectCount = adminProjects.filter(project => project.created_by === profile.id).length;
-
-    return `
-      <article class="admin-user-card">
-        <div class="admin-user-identity">
-          <strong>${escapeHtml(profile.full_name || "Name not supplied")}</strong>
-          <span>${escapeHtml(profile.email || "Email unavailable")}</span>
-        </div>
-        <label class="field">
-          <span class="field-title">Department</span>
-          <input data-user-department="${profile.id}" type="text" maxlength="120" value="${escapeAttribute(profile.department || "")}">
-        </label>
-        <label class="field">
-          <span class="field-title">Application role</span>
-          <select data-user-role="${profile.id}" ${isSelf ? "disabled" : ""}>
-            <option value="normal_user"${profile.role === "normal_user" ? " selected" : ""}>Normal User</option>
-            <option value="super_admin"${profile.role === "super_admin" ? " selected" : ""}>Super Admin</option>
-          </select>
-          ${isSelf ? '<span class="admin-self-note">Current super-admin account cannot be demoted here.</span>' : ''}
-        </label>
-        <div class="admin-edit-actions">
-          <span class="admin-self-note">${projectCount} project${projectCount === 1 ? "" : "s"}</span>
-          <button class="button secondary small" type="button" data-user-save="${profile.id}">Save User</button>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  $$('[data-user-save]').forEach(button => {
-    button.addEventListener("click", () => adminUpdateUser(button.dataset.userSave));
-  });
-}
-
-async function adminUpdateUser(id) {
-  if (currentProfile?.role !== "super_admin") return;
-
-  const department = $(`[data-user-department="${id}"]`).value.trim();
-  const roleElement = $(`[data-user-role="${id}"]`);
-  const role = id === currentUser.id ? "super_admin" : roleElement.value;
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({ department, role })
-    .eq("id", id);
-
-  if (error) return showToast(error.message, true);
-  showToast("User profile and role updated.");
-  await loadAdminData();
-}
-
-function exportAdminProjectsCsv() {
-  if (currentProfile?.role !== "super_admin") return;
-
-  const rows = filteredAdminProjects().map(project => {
-    const profile = profileFor(project.created_by);
-    return {
-      initiative_name: project.initiative_name,
-      submitted_by: profile?.full_name || profile?.email || project.created_by,
-      user_email: profile?.email || "",
-      department: project.department,
-      strategic_pillar: project.strategic_pillar,
-      accountable_owner: project.accountable_owner,
-      status: project.status,
-      current_phase: project.current_phase,
-      progress: project.progress,
-      risk_level: project.risk_level,
-      readiness_score: project.readiness_score,
-      readiness_recommendation: project.readiness_recommendation,
-      hr_collaboration_status: project.hr_collaboration_status,
-      target_date: project.target_date || "",
-      next_action: project.next_action || "",
-      updated_at: project.updated_at
-    };
-  });
-
-  if (!rows.length) return showToast("There are no project records to export.", true);
-
-  const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.join(","),
-    ...rows.map(row => headers.map(header => csvCell(row[header])).join(","))
-  ].join("\n");
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `home31-enterprise-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function csvCell(valueToEscape) {
-  const text = String(valueToEscape ?? "").replaceAll('"', '""');
-  return `"${text}"`;
-}
-
-function formatDate(valueToFormat) {
-  if (!valueToFormat) return "Not recorded";
-  const date = new Date(valueToFormat);
-  if (Number.isNaN(date.getTime())) return String(valueToFormat);
-  return new Intl.DateTimeFormat("en-MY", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
-
-function escapeAttribute(valueToEscape) {
-  return escapeHtml(valueToEscape).replaceAll("`", "&#096;");
-}
-
-function showAdminProjectMessage(message, error = false) {
-  elements.adminProjectMessage.textContent = message;
-  elements.adminProjectMessage.classList.remove("hidden", "error");
-  if (error) elements.adminProjectMessage.classList.add("error");
-}
-
-function hideAdminProjectMessage() {
-  elements.adminProjectMessage.classList.add("hidden");
-}
-
-function showPortfolioMessage(message, error = false) {
-  elements.portfolioMessage.textContent = message;
-  elements.portfolioMessage.classList.remove("hidden", "error");
-  if (error) elements.portfolioMessage.classList.add("error");
-}
-
-function hidePortfolioMessage() {
-  elements.portfolioMessage.classList.add("hidden");
+function destroyCharts() {
+  Object.values(charts).forEach(chart => chart?.destroy());
+  charts = {};
 }
 
 function showToast(message, error = false) {
-  elements.toast.textContent = message;
-  elements.toast.style.background = error ? "#8e1019" : "#1b1b1d";
-  elements.toast.classList.remove("hidden");
-
+  $("#toast").textContent = message;
+  $("#toast").style.background = error ? "#8e1019" : "#1d1d20";
+  $("#toast").classList.remove("hidden");
   window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => {
-    elements.toast.classList.add("hidden");
-  }, 4200);
+  showToast.timer = window.setTimeout(() => $("#toast").classList.add("hidden"), 4300);
 }
 
-function setBusy(form, busy) {
-  form.querySelectorAll("button, input").forEach(control => { control.disabled = busy; });
+function labelRole(role) {
+  const labels = {
+    super_admin: "Super Admin",
+    normal_user: "Normal User",
+    department_admin: "Department Admin",
+    hr_admin: "HR Admin",
+    finance_admin: "Finance Admin",
+    auditor: "Auditor",
+    viewer: "Viewer"
+  };
+  return labels[role] || role;
 }
 
-function value(selector) {
-  return $(selector).value.trim();
+function initials(name) {
+  return String(name || "U")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join("");
 }
 
-function nullableValue(selector) {
-  const result = value(selector);
-  return result || null;
-}
-
-function setValue(selector, newValue) {
-  $(selector).value = newValue ?? "";
-}
-
-function setChecked(selector, newValue) {
-  $(selector).checked = Boolean(newValue);
-}
-
-function clamp(number, minimum, maximum) {
-  return Math.min(Math.max(number, minimum), maximum);
-}
-
-function escapeHtml(valueToEscape) {
-  return String(valueToEscape ?? "")
+function escapeHtml(value) {
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
