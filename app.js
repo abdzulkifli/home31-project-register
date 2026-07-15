@@ -1,8 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // Replace these two placeholders with your Supabase project settings.
-const SUPABASE_URL = "https://jyqbhpdiggflkhlnrrwg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_nTCrP_8IP2HR2nbe1BuWgw_kAtwI9Rz";
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR-PUBLISHABLE-KEY";
 
 // Resolves automatically to the folder where this page is currently hosted.
 // This preserves a GitHub Pages repository path instead of redirecting only
@@ -14,6 +14,20 @@ const configured =
   !SUPABASE_PUBLISHABLE_KEY.includes("YOUR-PUBLISHABLE-KEY");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Temporary provisioning client. It does not persist or replace the super
+// admin's current browser session.
+const provisioningClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -1257,7 +1271,6 @@ async function adminCreateUser(event) {
     return showToast("Only a super admin can add users.", true);
   }
 
-  const method = value("#admin-new-user-method");
   const fullName = value("#admin-new-user-name");
   const department = value("#admin-new-user-department");
   const email = value("#admin-new-user-email").toLowerCase();
@@ -1267,60 +1280,58 @@ async function adminCreateUser(event) {
     return showToast("Complete the user's name, department and email.", true);
   }
 
-  if (method === "create" && password.length < 8) {
+  if (password.length < 8) {
     return showToast("The temporary password must contain at least 8 characters.", true);
   }
 
   elements.adminCreateUserButton.disabled = true;
-  elements.adminCreateUserButton.textContent =
-    method === "create" ? "Creating..." : "Sending...";
+  elements.adminCreateUserButton.textContent = "Creating...";
 
-  const { data, error } = await supabase.functions.invoke("admin-create-user", {
-    body: {
-      method,
-      full_name: fullName,
-      department,
-      email,
-      password: method === "create" ? password : undefined,
-      redirect_to: AUTH_REDIRECT_URL
+  const { data, error } = await provisioningClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+        department
+      }
     }
   });
 
   elements.adminCreateUserButton.disabled = false;
-  updateAdminCreateUserMethod();
+  elements.adminCreateUserButton.textContent = "Create Active Normal User";
 
   if (error) {
-    let message = error.message || "Unable to create the user.";
-
-    try {
-      if (error.context && typeof error.context.json === "function") {
-        const details = await error.context.json();
-        message = details?.error || details?.message || message;
-      }
-    } catch {
-      // Preserve the original function error when the response body is unavailable.
-    }
-
-    return showToast(message, true);
+    return showToast(error.message || "Unable to create the user.", true);
   }
 
-  if (method === "create") {
-    lastCreatedCredentials = { email, password };
+  if (!data.user) {
+    return showToast("Supabase did not return a newly created user.", true);
   }
+
+  if (!data.session) {
+    return showToast(
+      "The account was created but is waiting for email confirmation. " +
+      "Disable Confirm email in Supabase Authentication settings for temporary immediate login.",
+      true
+    );
+  }
+
+  lastCreatedCredentials = { email, password };
 
   elements.adminCreateUserForm.reset();
   $("#admin-new-user-method").value = "create";
   updateAdminCreateUserMethod();
 
   showToast(
-    data?.message ||
-      (method === "create"
-        ? "The user account was created."
-        : "The invitation email was sent.")
+    `Active Normal User created for ${email}. The user can log in immediately.`
   );
 
-  await loadAdminData();
+  // The database signup trigger creates the profile. Give it a short moment
+  // before refreshing the directory.
+  window.setTimeout(loadAdminData, 700);
 }
+
 
 function renderAdminUsers() {
   if (!adminProfiles.length) {

@@ -1,4 +1,4 @@
-# HOME31 Enterprise Initiative Register V4 — Version 3
+# HOME31 Enterprise Initiative Register V4.2 — Temporary No-Edge Provisioning — Version 3
 
 This GitHub Pages + Supabase prototype provides two different dashboards.
 
@@ -201,3 +201,39 @@ super admin, creates the Auth account with `email_confirm: true`, and creates th
 application profile as `normal_user`.
 
 The temporary password must be distributed through an approved secure channel.
+
+
+## Temporary user creation without an Edge Function
+
+Version 4.2 removes the Edge Function dependency from the Add User workflow.
+
+The super-admin dashboard uses a second Supabase browser client with session
+persistence disabled. This allows it to register a normal user without replacing
+the super admin's current login session.
+
+### Required Supabase setting
+
+Open:
+
+`Authentication > Providers > Email`
+
+Turn **Confirm email** OFF temporarily.
+
+With confirmation disabled:
+
+- the admin enters the user's name, department, email and temporary password;
+- Supabase creates the Auth user immediately;
+- the existing signup trigger creates a `normal_user` profile;
+- the new user can log in immediately;
+- no confirmation email and no Edge Function are needed.
+
+### Important limitation
+
+This is suitable only for a controlled prototype. The publishable key cannot
+prove that the signup request came from the visible admin form. Before production:
+
+- re-enable email confirmation;
+- remove public self-registration if it is not required;
+- restore protected server-side provisioning through an Edge Function or other
+  approved backend;
+- add password-change enforcement and audit logging.

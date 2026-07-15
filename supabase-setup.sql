@@ -221,7 +221,10 @@ using ((select auth.uid()) = created_by or (select public.is_super_admin()));
 
 create policy "Users create own project records"
 on public.projects for insert to authenticated
-with check ((select auth.uid()) = created_by);
+with check (
+  (select auth.uid()) = created_by
+  or (select public.is_super_admin())
+);
 
 create policy "Users or admins update projects"
 on public.projects for update to authenticated
