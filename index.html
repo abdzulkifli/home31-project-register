@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="HOME31 Enterprise Management Platform V7">
-  <title>HOME31 Enterprise Management Platform V7.3</title>
+  <title>HOME31 Enterprise Management Platform V7.5</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -138,6 +141,13 @@
         </div>
 
         <div class="topbar-actions">
+          <div id="admin-year-control" class="admin-year-control hidden">
+            <label>
+              <span>Portfolio year</span>
+              <select id="admin-year-select" aria-label="Select portfolio year"></select>
+            </label>
+            <small id="admin-year-source-badge">Live data</small>
+          </div>
           <button id="top-new-initiative" class="button gold" type="button">+ New Initiative</button>
           <button id="top-account-button" class="icon-button" type="button">👤</button>
         </div>
@@ -271,9 +281,9 @@
             </article>
             <article class="executive-kpi-card">
               <div class="kpi-icon">RM</div>
-              <span>Effective post-challenge cost</span>
+              <span id="admin-kpi-cost-label">Selected portfolio cost</span>
               <strong id="admin-kpi-effective-cost">RM0</strong>
-              <small id="admin-kpi-effective-note">Confirmed numeric values</small>
+              <small id="admin-kpi-effective-note">Year-specific cost basis</small>
             </article>
             <article class="executive-kpi-card positive">
               <div class="kpi-icon">↓</div>
@@ -415,10 +425,10 @@
             <div class="executive-panel-heading">
               <div>
                 <span class="executive-section-code">COMPARISON SCOPE</span>
-                <h3>AMP2026 vs AMP2027 Management Comparison</h3>
-                <p>AMP2026 baseline is configurable in <code>app.js</code>; AMP2027 is calculated from current Supabase records.</p>
+                <h3>AMP2026 vs AMP2027 Live Management Comparison</h3>
+                <p>Both years are calculated from Supabase records using their respective management cost basis.</p>
               </div>
-              <span class="executive-status-chip neutral">Full portfolio</span>
+              <span id="admin-comparison-source-status" class="executive-status-chip neutral">Live year records</span>
             </div>
             <div id="admin-comparison-grid" class="comparison-grid"></div>
             <div id="admin-comparison-notes" class="comparison-notes"></div>
@@ -429,7 +439,7 @@
               <div>
                 <span class="executive-section-code">COMPARISON 03</span>
                 <h3>Department Cost Concentration</h3>
-                <p>Top departments by confirmed post-challenge cost, compared with the configurable AMP2026 baseline where available.</p>
+                <p>Live AMP2026 approved-budget concentration compared with AMP2027 effective post-challenge cost.</p>
               </div>
             </div>
             <div class="executive-chart-shell wide"><canvas id="admin-department-cost-chart"></canvas></div>
@@ -495,85 +505,600 @@
           </div>
         </section>
 
-        <section id="module-admin-portfolio" class="module">
-          <div class="module-heading">
-            <div><span class="section-label">Enterprise portfolio</span><h2>All Initiatives</h2><p>Search, filter, edit and monitor every initiative.</p></div>
-            <button class="button gold" type="button" data-open-initiative>+ Key In Initiative</button>
+        <section id="module-admin-portfolio" class="module admin-command-module">
+          <div class="admin-command-hero">
+            <div>
+              <span class="admin-command-code">PORTFOLIO 01</span>
+              <h2>Enterprise Portfolio</h2>
+              <p>Search, prioritise and govern every HOME31 initiative through one consistent portfolio workspace.</p>
+            </div>
+            <div class="admin-command-actions">
+              <button id="admin-portfolio-refresh" class="admin-command-button ghost" type="button">↻ Refresh</button>
+              <button id="admin-export-portfolio" class="admin-command-button ghost" type="button">⇩ Export CSV</button>
+              <button class="admin-command-button gold" type="button" data-open-initiative>+ Key In Initiative</button>
+            </div>
           </div>
 
-          <div class="filter-bar admin-filter">
-            <input id="admin-search" type="search" placeholder="Search project, owner or department">
-            <select id="admin-status-filter"><option value="">All status</option><option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option></select>
-            <select id="admin-pillar-filter"><option value="">All pillars</option></select>
-            <select id="admin-risk-filter"><option value="">All risk</option><option>Low</option><option>Medium</option><option>High</option><option>Extreme</option></select>
-            <button id="admin-clear-filters" class="button light small" type="button">Clear</button>
+          <div class="admin-command-kpi-grid six">
+            <article class="admin-command-kpi featured">
+              <span>Portfolio records</span>
+              <strong id="portfolio-kpi-total">0</strong>
+              <small>All enterprise initiatives</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Current selection</span>
+              <strong id="portfolio-kpi-filtered">0</strong>
+              <small>After active filters</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Effective cost</span>
+              <strong id="portfolio-kpi-cost">RM0</strong>
+              <small>Post-challenge cost basis</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Approved coverage</span>
+              <strong id="portfolio-kpi-budget">0%</strong>
+              <small>Approved-budget fields populated</small>
+            </article>
+            <article class="admin-command-kpi danger">
+              <span>At risk</span>
+              <strong id="portfolio-kpi-risk">0</strong>
+              <small>High, extreme or at-risk</small>
+            </article>
+            <article class="admin-command-kpi positive">
+              <span>Ready for delivery</span>
+              <strong id="portfolio-kpi-ready">0</strong>
+              <small>Readiness ≥80% and no high risk</small>
+            </article>
           </div>
 
-          <div class="panel">
-            <div class="table-wrap">
-              <table id="admin-portfolio-table">
-                <thead><tr><th>Initiative</th><th>Owner</th><th>Department</th><th>Category</th><th>System</th><th>Priority Status</th><th>Pillar</th><th>Status</th><th>Risk</th><th>Approved Budget</th><th>Readiness</th><th>Progress</th><th>Action</th></tr></thead>
+          <div class="admin-command-grid portfolio-summary-grid">
+            <article class="admin-command-panel portfolio-insight-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">PORTFOLIO INSIGHT</span>
+                  <h3>Selection Narrative</h3>
+                </div>
+                <span id="portfolio-selection-badge" class="admin-command-chip">Full portfolio</span>
+              </div>
+              <p id="portfolio-selection-insight" class="admin-command-narrative">Portfolio insight will appear after data is loaded.</p>
+              <div id="portfolio-selection-facts" class="admin-command-facts"></div>
+            </article>
+
+            <article class="admin-command-panel filter-command-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">CONTROL 02</span>
+                  <h3>Portfolio Filters</h3>
+                </div>
+                <button id="admin-clear-filters" class="admin-command-text-button" type="button">Clear all</button>
+              </div>
+
+              <div class="admin-command-filter-grid">
+                <label>
+                  <span>Search</span>
+                  <input id="admin-search" type="search" placeholder="Initiative, owner or department">
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select id="admin-status-filter">
+                    <option value="">All status</option>
+                    <option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Strategic pillar</span>
+                  <select id="admin-pillar-filter"><option value="">All pillars</option></select>
+                </label>
+                <label>
+                  <span>Risk level</span>
+                  <select id="admin-risk-filter">
+                    <option value="">All risk</option><option>Low</option><option>Medium</option><option>High</option><option>Extreme</option>
+                  </select>
+                </label>
+              </div>
+            </article>
+          </div>
+
+          <article class="admin-command-panel portfolio-table-panel">
+            <div class="admin-command-panel-heading">
+              <div>
+                <span class="admin-command-section-code">REGISTER 03</span>
+                <h3>Enterprise Initiative Register</h3>
+                <p>Click Edit to open the comprehensive initiative record.</p>
+              </div>
+              <span id="portfolio-table-count" class="admin-command-chip neutral">0 records</span>
+            </div>
+
+            <div class="admin-command-table-wrap">
+              <table id="admin-portfolio-table" class="admin-command-table">
+                <thead>
+                  <tr>
+                    <th>Year</th><th>Initiative</th><th>Owner</th><th>Department</th><th>Category</th><th>System</th><th>Priority Status</th><th>Pillar</th><th>Status</th><th>Risk</th><th>Approved Budget</th><th>Readiness</th><th>Progress</th><th>Action</th>
+                  </tr>
+                </thead>
                 <tbody></tbody>
               </table>
             </div>
+          </article>
+
+          <div class="admin-command-assurance-strip">
+            <article><strong id="portfolio-assurance-ownership">0%</strong><span>Ownership completeness</span></article>
+            <article><strong id="portfolio-assurance-evidence">0%</strong><span>Average evidence completeness</span></article>
+            <article><strong id="portfolio-assurance-ict">0</strong><span>ICT assessments pending</span></article>
+            <article><strong id="portfolio-assurance-hr">0</strong><span>HR reviews pending</span></article>
+            <article><strong id="portfolio-assurance-overdue">0</strong><span>Overdue active initiatives</span></article>
           </div>
         </section>
 
-        <section id="module-admin-users" class="module">
-          <div class="module-heading">
-            <div><span class="section-label">Access administration</span><h2>User Administration</h2><p>Create active users with temporary passwords and manage roles.</p></div>
+        <section id="module-admin-users" class="module admin-command-module">
+          <div class="admin-command-hero">
+            <div>
+              <span class="admin-command-code">ACCESS 01</span>
+              <h2>User Administration</h2>
+              <p>Create active users, enforce first-login password changes and maintain controlled role assignments.</p>
+            </div>
+            <div class="admin-command-actions">
+              <button id="refresh-admin-data" class="admin-command-button ghost" type="button">↻ Refresh Directory</button>
+            </div>
           </div>
 
-          <div class="admin-user-layout">
-            <form id="admin-create-user-form" class="panel">
-              <div class="panel-heading"><h3>Create Active Normal User</h3></div>
-              <div id="user-service-warning" class="notice blue">
-                Requires the deployed Supabase Edge Function <code>admin-create-user</code>.
+          <div class="admin-command-kpi-grid six">
+            <article class="admin-command-kpi featured">
+              <span>Registered users</span>
+              <strong id="users-kpi-total">0</strong>
+              <small>All platform profiles</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Super admins</span>
+              <strong id="users-kpi-admins">0</strong>
+              <small>Privileged accounts</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Normal users</span>
+              <strong id="users-kpi-normal">0</strong>
+              <small>Initiative contributors</small>
+            </article>
+            <article class="admin-command-kpi danger">
+              <span>Password change pending</span>
+              <strong id="users-kpi-password">0</strong>
+              <small>Temporary password still active</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Departments</span>
+              <strong id="users-kpi-departments">0</strong>
+              <small>Organisational coverage</small>
+            </article>
+            <article class="admin-command-kpi positive">
+              <span>Access readiness</span>
+              <strong id="users-kpi-readiness">0%</strong>
+              <small>Permanent password established</small>
+            </article>
+          </div>
+
+          <div class="admin-command-grid user-admin-top-grid">
+            <form id="admin-create-user-form" class="admin-command-panel admin-create-user-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">PROVISION 02</span>
+                  <h3>Create Active Normal User</h3>
+                  <p>The user signs in with a temporary password and must change it before dashboard access.</p>
+                </div>
               </div>
-              <label class="field"><span>Full name</span><input id="admin-user-name" required></label>
-              <label class="field"><span>Department</span><input id="admin-user-department" required></label>
-              <label class="field"><span>Email</span><input id="admin-user-email" type="email" required></label>
-              <label class="field"><span>Temporary password</span><input id="admin-user-password" type="text" minlength="10" required></label>
-              <div class="button-row">
-                <button id="generate-password-button" class="button light" type="button">Generate Password</button>
-                <button class="button gold" type="submit">Create User</button>
+
+              <div id="user-service-warning" class="admin-command-notice">
+                Protected service required: <code>admin-create-user</code> Supabase Edge Function.
+              </div>
+
+              <div class="admin-command-form-grid">
+                <label class="admin-command-field">
+                  <span>Full name</span>
+                  <input id="admin-user-name" required>
+                </label>
+                <label class="admin-command-field">
+                  <span>Department</span>
+                  <input id="admin-user-department" required>
+                </label>
+                <label class="admin-command-field full">
+                  <span>Email address</span>
+                  <input id="admin-user-email" type="email" required>
+                </label>
+                <label class="admin-command-field full">
+                  <span>Temporary password</span>
+                  <input id="admin-user-password" type="text" minlength="10" required>
+                </label>
+              </div>
+
+              <div class="admin-command-actions form-actions">
+                <button id="generate-password-button" class="admin-command-button ghost" type="button">Generate Password</button>
+                <button class="admin-command-button gold" type="submit">Create Active User</button>
               </div>
             </form>
 
-            <div class="panel">
-              <div class="panel-heading">
-                <div><h3>User Directory</h3><p class="muted">Promote trusted users only.</p></div>
-                <button id="refresh-admin-data" class="button secondary small" type="button">Refresh</button>
+            <article class="admin-command-panel access-governance-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">GOVERNANCE 03</span>
+                  <h3>Access Governance</h3>
+                  <p>Role distribution and first-login security status.</p>
+                </div>
               </div>
-              <div id="admin-user-list" class="admin-user-list"></div>
+
+              <div class="user-chart-grid">
+                <div class="admin-small-chart"><canvas id="admin-user-role-chart"></canvas></div>
+                <div id="admin-user-governance-list" class="admin-command-list"></div>
+              </div>
+            </article>
+          </div>
+
+          <article class="admin-command-panel user-directory-panel">
+            <div class="admin-command-panel-heading">
+              <div>
+                <span class="admin-command-section-code">DIRECTORY 04</span>
+                <h3>User Directory</h3>
+                <p>Search users and review roles, departments and password-change status.</p>
+              </div>
+              <span id="admin-user-directory-count" class="admin-command-chip neutral">0 users</span>
+            </div>
+
+            <div class="admin-user-filter-grid">
+              <label>
+                <span>Search user</span>
+                <input id="admin-user-search" type="search" placeholder="Name, email or department">
+              </label>
+              <label>
+                <span>Role</span>
+                <select id="admin-user-role-filter">
+                  <option value="">All roles</option>
+                  <option value="super_admin">Super Admin</option>
+                  <option value="normal_user">Normal User</option>
+                  <option value="department_admin">Department Admin</option>
+                  <option value="hr_admin">HR Admin</option>
+                  <option value="finance_admin">Finance Admin</option>
+                  <option value="auditor">Auditor</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </label>
+              <label>
+                <span>Password status</span>
+                <select id="admin-user-password-filter">
+                  <option value="">All password status</option>
+                  <option value="pending">Change required</option>
+                  <option value="complete">Changed</option>
+                </select>
+              </label>
+              <button id="admin-clear-user-filters" class="admin-command-button ghost" type="button">Clear</button>
+            </div>
+
+            <div id="admin-user-list" class="admin-command-user-list"></div>
+          </article>
+
+          <div class="admin-command-assurance-strip">
+            <article><strong>RBAC</strong><span>Role-based access enabled</span></article>
+            <article><strong>First Login</strong><span>Forced password change</span></article>
+            <article><strong>RLS</strong><span>Database-level restrictions</span></article>
+            <article><strong>Edge</strong><span>Protected user provisioning</span></article>
+            <article><strong id="users-assurance-pending">0</strong><span>Accounts requiring follow-up</span></article>
+          </div>
+        </section>
+
+        <section id="module-admin-exceptions" class="module admin-command-module">
+          <div class="admin-command-hero">
+            <div>
+              <span class="admin-command-code">ASSURANCE 01</span>
+              <h2>Risks & Exceptions</h2>
+              <p>Direct management attention to material risk, delivery slippage, low readiness and unresolved functional reviews.</p>
+            </div>
+            <div class="admin-command-actions">
+              <button class="admin-command-button ghost" data-jump="admin-portfolio" type="button">Open Full Portfolio</button>
             </div>
           </div>
+
+          <div class="admin-command-kpi-grid six">
+            <article class="admin-command-kpi danger">
+              <span>High / extreme risk</span>
+              <strong id="admin-exception-risk-count">0</strong>
+              <small>Material exposure</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Below 70% readiness</span>
+              <strong id="admin-exception-readiness-count">0</strong>
+              <small>Corrective action required</small>
+            </article>
+            <article class="admin-command-kpi danger">
+              <span>Overdue active</span>
+              <strong id="admin-exception-overdue-count">0</strong>
+              <small>Past target completion date</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>HR review pending</span>
+              <strong id="admin-exception-hr-count">0</strong>
+              <small>People or change decision</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>ICT review pending</span>
+              <strong id="admin-exception-ict-count">0</strong>
+              <small>Classification or architecture input</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Evidence below 70%</span>
+              <strong id="admin-exception-evidence-count">0</strong>
+              <small>Supporting evidence gap</small>
+            </article>
+          </div>
+
+          <div class="admin-command-grid">
+            <article class="admin-command-panel chart-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">RISK 02</span>
+                  <h3>Risk Exposure</h3>
+                  <p>Current distribution of Low, Medium, High and Extreme risk ratings.</p>
+                </div>
+              </div>
+              <div class="admin-command-chart-shell"><canvas id="admin-exception-risk-chart"></canvas></div>
+            </article>
+
+            <article class="admin-command-panel chart-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">EXCEPTION 03</span>
+                  <h3>Exception Concentration</h3>
+                  <p>Number of initiatives requiring follow-up across key governance dimensions.</p>
+                </div>
+              </div>
+              <div class="admin-command-chart-shell"><canvas id="admin-exception-health-chart"></canvas></div>
+            </article>
+          </div>
+
+          <div class="admin-exception-lanes">
+            <article class="admin-exception-lane critical">
+              <div class="admin-exception-lane-heading">
+                <div><span>LANE 01</span><h3>High / Extreme Risk</h3></div>
+                <strong id="admin-exception-risk-badge">0</strong>
+              </div>
+              <div id="admin-exception-risk-list" class="admin-command-list"></div>
+            </article>
+
+            <article class="admin-exception-lane watch">
+              <div class="admin-exception-lane-heading">
+                <div><span>LANE 02</span><h3>Below 70% Readiness</h3></div>
+                <strong id="admin-exception-readiness-badge">0</strong>
+              </div>
+              <div id="admin-exception-readiness-list" class="admin-command-list"></div>
+            </article>
+
+            <article class="admin-exception-lane overdue">
+              <div class="admin-exception-lane-heading">
+                <div><span>LANE 03</span><h3>Overdue Active Projects</h3></div>
+                <strong id="admin-exception-overdue-badge">0</strong>
+              </div>
+              <div id="admin-exception-overdue-list" class="admin-command-list"></div>
+            </article>
+          </div>
+
+          <article class="admin-command-panel cross-functional-panel">
+            <div class="admin-command-panel-heading">
+              <div>
+                <span class="admin-command-section-code">CROSS-FUNCTIONAL 04</span>
+                <h3>HR, ICT & Evidence Follow-Up</h3>
+                <p>Initiatives requiring specialist review or additional evidence before confident management decisions.</p>
+              </div>
+            </div>
+
+            <div class="cross-functional-grid">
+              <div>
+                <h4>HR & Change</h4>
+                <div id="admin-exception-hr-list" class="admin-command-list"></div>
+              </div>
+              <div>
+                <h4>ICT & Architecture</h4>
+                <div id="admin-exception-ict-list" class="admin-command-list"></div>
+              </div>
+              <div>
+                <h4>Evidence Closure</h4>
+                <div id="admin-exception-evidence-list" class="admin-command-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <div class="admin-command-assurance-strip">
+            <article><strong id="exception-assurance-stable">0</strong><span>Stable initiatives</span></article>
+            <article><strong id="exception-assurance-watch">0</strong><span>Watchlist initiatives</span></article>
+            <article><strong id="exception-assurance-critical">0</strong><span>Critical initiatives</span></article>
+            <article><strong id="exception-assurance-treatment">0%</strong><span>Risk treatment readiness</span></article>
+            <article><strong id="exception-assurance-average">0%</strong><span>Average portfolio readiness</span></article>
+          </div>
         </section>
 
-        <section id="module-admin-exceptions" class="module">
-          <div class="module-heading">
-            <div><span class="section-label">Management by exception</span><h2>Risks & Exceptions</h2><p>High-risk, overdue, low-readiness and HR-dependent initiatives.</p></div>
+        <section id="module-admin-system" class="module admin-command-module">
+          <div class="admin-command-hero">
+            <div>
+              <span class="admin-command-code">ARCHITECTURE 01</span>
+              <h2>System & Future</h2>
+              <p>Translate the working prototype into a secure, integrated and governable enterprise platform roadmap.</p>
+            </div>
+            <div class="admin-command-actions">
+              <span class="admin-command-chip good">V7.4 foundation</span>
+            </div>
           </div>
 
-          <div class="exception-lanes">
-            <article><div class="lane-heading"><span>High / Extreme Risk</span><strong id="admin-exception-risk-count">0</strong></div><div id="admin-exception-risk-list" class="future-list compact"></div></article>
-            <article><div class="lane-heading"><span>Below 70% Readiness</span><strong id="admin-exception-readiness-count">0</strong></div><div id="admin-exception-readiness-list" class="future-list compact"></div></article>
-            <article><div class="lane-heading"><span>Overdue Active Projects</span><strong id="admin-exception-overdue-count">0</strong></div><div id="admin-exception-overdue-list" class="future-list compact"></div></article>
+          <div class="admin-command-kpi-grid six">
+            <article class="admin-command-kpi positive">
+              <span>Authentication</span>
+              <strong>Active</strong>
+              <small>Supabase Auth foundation</small>
+            </article>
+            <article class="admin-command-kpi positive">
+              <span>Role control</span>
+              <strong>Active</strong>
+              <small>RBAC and RLS foundation</small>
+            </article>
+            <article class="admin-command-kpi positive">
+              <span>Password security</span>
+              <strong>Active</strong>
+              <small>Forced first-login change</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Approval workflow</span>
+              <strong>Planned</strong>
+              <small>Stage gates and decisions</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Document repository</span>
+              <strong>Planned</strong>
+              <small>Evidence and versioning</small>
+            </article>
+            <article class="admin-command-kpi">
+              <span>Enterprise SSO</span>
+              <strong>Future</strong>
+              <small>Microsoft Entra ID and MFA</small>
+            </article>
           </div>
-        </section>
 
-        <section id="module-admin-system" class="module">
-          <div class="module-heading">
-            <div><span class="section-label">Architecture roadmap</span><h2>System & Future</h2><p>Planned production modules and enterprise controls.</p></div>
+          <div class="admin-command-grid">
+            <article class="admin-command-panel system-foundation-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">FOUNDATION 02</span>
+                  <h3>Current Platform Foundation</h3>
+                  <p>Capabilities already represented in the current HOME31 prototype.</p>
+                </div>
+              </div>
+
+              <div class="system-capability-list">
+                <article><span class="system-capability-icon ready">✓</span><div><strong>Role-based dashboards</strong><p>Separate normal-user and super-admin workspaces.</p></div><em>Active</em></article>
+                <article><span class="system-capability-icon ready">✓</span><div><strong>Comprehensive initiative record</strong><p>Ownership, strategy, ICT, value, finance, HR and evidence.</p></div><em>Active</em></article>
+                <article><span class="system-capability-icon ready">✓</span><div><strong>First-login password enforcement</strong><p>Temporary password must be replaced before dashboard access.</p></div><em>Active</em></article>
+                <article><span class="system-capability-icon ready">✓</span><div><strong>Executive analytics</strong><p>Portfolio, readiness, cost, delivery, fit and exception intelligence.</p></div><em>Active</em></article>
+                <article><span class="system-capability-icon ready">✓</span><div><strong>Database-level access control</strong><p>Supabase Row Level Security policies.</p></div><em>Active</em></article>
+              </div>
+            </article>
+
+            <article class="admin-command-panel architecture-principles-panel">
+              <div class="admin-command-panel-heading">
+                <div>
+                  <span class="admin-command-section-code">PRINCIPLES 03</span>
+                  <h3>Enterprise Design Principles</h3>
+                  <p>Guardrails to preserve consistency as the platform expands.</p>
+                </div>
+              </div>
+
+              <div class="architecture-principles">
+                <article><strong>One source of truth</strong><span>Initiative records, ownership, decisions and evidence use controlled enterprise data.</span></article>
+                <article><strong>Management by exception</strong><span>Dashboards surface material gaps rather than overwhelming users with raw data.</span></article>
+                <article><strong>Security by design</strong><span>Identity, privilege, audit and data access are enforced beyond the interface.</span></article>
+                <article><strong>Modular delivery</strong><span>Modules can be implemented in phases without redesigning the platform.</span></article>
+              </div>
+            </article>
           </div>
 
-          <div class="settings-grid">
-            <article><h3>Microsoft Entra ID</h3><p>Future SSO, MFA and approved organisational identities.</p><span>Planned</span></article>
-            <article><h3>Approval Workflow</h3><p>Stage gates, reviewer assignments, decisions and escalation.</p><span>Planned</span></article>
-            <article><h3>Document Repository</h3><p>Evidence uploads, formal papers, versions and retention.</p><span>Planned</span></article>
-            <article><h3>Audit Trail</h3><p>Immutable records of changes, approvals and role actions.</p><span>Foundation included</span></article>
-            <article><h3>Notifications</h3><p>Email or Teams alerts for overdue actions and approvals.</p><span>Planned</span></article>
-            <article><h3>AI Assistant</h3><p>Executive summaries, risk analysis and management papers.</p><span>Future</span></article>
+          <article class="admin-command-panel roadmap-panel">
+            <div class="admin-command-panel-heading">
+              <div>
+                <span class="admin-command-section-code">ROADMAP 04</span>
+                <h3>Platform Evolution Roadmap</h3>
+                <p>A practical sequence from working prototype to an enterprise-grade HOME31 management platform.</p>
+              </div>
+            </div>
+
+            <div class="system-roadmap">
+              <article class="current">
+                <span>NOW</span>
+                <strong>Governed Register</strong>
+                <p>Auth, roles, comprehensive form, executive dashboard and portfolio oversight.</p>
+                <em>Current foundation</em>
+              </article>
+              <article>
+                <span>NEXT</span>
+                <strong>Workflow & Decisions</strong>
+                <p>Department review, CPS challenge, HR/ICT/Finance review, management approval and conditions.</p>
+                <em>Recommended next release</em>
+              </article>
+              <article>
+                <span>THEN</span>
+                <strong>Evidence & Notifications</strong>
+                <p>Supabase Storage, document versioning, alerts, reminders and decision evidence.</p>
+                <em>Expansion stage</em>
+              </article>
+              <article>
+                <span>FUTURE</span>
+                <strong>Enterprise Integration</strong>
+                <p>Entra ID SSO, HRMS, Finance, Teams, Power BI and approved repositories.</p>
+                <em>Enterprise target</em>
+              </article>
+              <article>
+                <span>ADVANCED</span>
+                <strong>AI & Forecasting</strong>
+                <p>Executive summaries, risk prediction, scenario analysis and management-paper generation.</p>
+                <em>Controlled innovation</em>
+              </article>
+            </div>
+          </article>
+
+          <div class="system-module-grid">
+            <article class="system-module-card">
+              <span class="system-module-status next">NEXT RELEASE</span>
+              <h3>Approval Workflow</h3>
+              <p>Configurable stage gates, review comments, conditional approvals and escalation.</p>
+              <ul><li>Department submission</li><li>CPS challenge</li><li>Functional review</li><li>Management decision</li></ul>
+            </article>
+            <article class="system-module-card">
+              <span class="system-module-status next">NEXT RELEASE</span>
+              <h3>Document Repository</h3>
+              <p>Evidence files, business cases, financial papers and formal decision records.</p>
+              <ul><li>Version control</li><li>Document categories</li><li>Retention rules</li><li>Access restrictions</li></ul>
+            </article>
+            <article class="system-module-card">
+              <span class="system-module-status planned">PLANNED</span>
+              <h3>Audit Trail</h3>
+              <p>Immutable record of changes, approval decisions and privileged administration.</p>
+              <ul><li>Old and new values</li><li>Actor and timestamp</li><li>Decision history</li><li>Exportable evidence</li></ul>
+            </article>
+            <article class="system-module-card">
+              <span class="system-module-status planned">PLANNED</span>
+              <h3>Notifications</h3>
+              <p>Email and Microsoft Teams alerts for action owners and approvers.</p>
+              <ul><li>Overdue alerts</li><li>Review requests</li><li>Risk escalation</li><li>Approval outcomes</li></ul>
+            </article>
+            <article class="system-module-card">
+              <span class="system-module-status future">FUTURE</span>
+              <h3>Microsoft Entra ID</h3>
+              <p>Organisational SSO, MFA, identity lifecycle and approved-domain controls.</p>
+              <ul><li>SSO</li><li>MFA</li><li>Group-based roles</li><li>Joiner/mover/leaver</li></ul>
+            </article>
+            <article class="system-module-card">
+              <span class="system-module-status future">FUTURE</span>
+              <h3>AI Management Assistant</h3>
+              <p>Controlled AI support grounded in approved HOME31 portfolio information.</p>
+              <ul><li>Executive summary</li><li>Risk narrative</li><li>Decision brief</li><li>Scenario questions</li></ul>
+            </article>
+          </div>
+
+          <article class="admin-command-panel governance-checklist-panel">
+            <div class="admin-command-panel-heading">
+              <div>
+                <span class="admin-command-section-code">GOVERNANCE 05</span>
+                <h3>Production Readiness Checklist</h3>
+                <p>Decisions required before organisational production use.</p>
+              </div>
+            </div>
+
+            <div class="production-checklist">
+              <article><strong>Hosting & architecture</strong><span>Approved production hosting, network, environment separation and support model.</span><em>Decision required</em></article>
+              <article><strong>Information security</strong><span>Security assessment, penetration testing, secrets management and incident response.</span><em>Decision required</em></article>
+              <article><strong>Privacy & retention</strong><span>Data classification, retention, disposal, privacy notice and records ownership.</span><em>Decision required</em></article>
+              <article><strong>Business continuity</strong><span>Backup, recovery, RTO/RPO, monitoring and operational support procedures.</span><em>Decision required</em></article>
+              <article><strong>Governance ownership</strong><span>Product owner, data owners, system administrator, change authority and assurance roles.</span><em>Decision required</em></article>
+            </div>
+          </article>
+
+          <div class="admin-command-assurance-strip">
+            <article><strong>V7.4</strong><span>Unified admin experience</span></article>
+            <article><strong>Modular</strong><span>Expandable architecture</span></article>
+            <article><strong>RBAC</strong><span>Controlled role model</span></article>
+            <article><strong>RLS</strong><span>Database security</span></article>
+            <article><strong>Roadmap</strong><span>Phased enterprise evolution</span></article>
           </div>
         </section>
       </section>
