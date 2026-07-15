@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="HOME31 Enterprise Management Platform V7">
-  <title>HOME31 Enterprise Management Platform V7</title>
+  <title>HOME31 Enterprise Management Platform V7.1</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -351,37 +351,461 @@
   </div>
 
   <div id="initiative-modal" class="modal hidden">
-    <div class="modal-card">
+    <div class="modal-card comprehensive-modal">
       <div class="modal-heading">
-        <div><span class="section-label">Initiative record</span><h2 id="initiative-modal-title">Create Initiative</h2></div>
+        <div>
+          <span class="section-label">Enterprise initiative record</span>
+          <h2 id="initiative-modal-title">Create Initiative</h2>
+          <p class="muted">Complete the ownership, strategic value, HR impact and evidence requirements before submission.</p>
+        </div>
         <button id="close-initiative-modal" class="icon-button" type="button">×</button>
       </div>
 
-      <form id="initiative-form" class="form-grid">
+      <div class="initiative-stepper" aria-label="Initiative form progress">
+        <button class="initiative-step active" type="button" data-form-step="1"><span>1</span>Ownership</button>
+        <button class="initiative-step" type="button" data-form-step="2"><span>2</span>Value & Delivery</button>
+        <button class="initiative-step" type="button" data-form-step="3"><span>3</span>HR & Change</button>
+        <button class="initiative-step" type="button" data-form-step="4"><span>4</span>Evidence</button>
+        <button class="initiative-step" type="button" data-form-step="5"><span>5</span>Review</button>
+      </div>
+
+      <div class="form-completion">
+        <div>
+          <span>Form completion</span>
+          <strong id="initiative-form-completion">0%</strong>
+        </div>
+        <div class="progress-track"><span id="initiative-form-completion-bar" style="width:0%"></span></div>
+      </div>
+
+      <form id="initiative-form" class="initiative-comprehensive-form">
         <input id="initiative-id" type="hidden">
 
-        <label id="initiative-owner-field" class="field full hidden">
-          <span>Record owner / submit on behalf of</span>
-          <select id="initiative-created-by"></select>
-        </label>
+        <section class="initiative-form-step active" data-step-panel="1">
+          <div class="form-section-heading">
+            <span class="section-label">Step 1</span>
+            <h3>Initiative Profile, Ownership & Strategic Alignment</h3>
+            <p>Establish clear accountability and alignment before delivery begins.</p>
+          </div>
 
-        <label class="field full"><span>Initiative name</span><input id="initiative-name" maxlength="150" required></label>
-        <label class="field"><span>Department</span><input id="initiative-department" required></label>
-        <label class="field"><span>Accountable owner</span><input id="initiative-owner" required></label>
-        <label class="field"><span>Strategic pillar</span><select id="initiative-pillar" required></select></label>
-        <label class="field"><span>Status</span><select id="initiative-status"><option>Planning</option><option>In Progress</option><option>At Risk</option><option>On Hold</option><option>Completed</option></select></label>
-        <label class="field"><span>Risk level</span><select id="initiative-risk"><option>Low</option><option selected>Medium</option><option>High</option><option>Extreme</option></select></label>
-        <label class="field"><span>Progress (%)</span><input id="initiative-progress" type="number" min="0" max="100" value="0"></label>
-        <label class="field"><span>Readiness (%)</span><input id="initiative-readiness" type="number" min="0" max="100" value="50"></label>
-        <label class="field"><span>Target date</span><input id="initiative-target-date" type="date"></label>
-        <label class="field"><span>HR collaboration</span><select id="initiative-hr"><option>Not required</option><option>Required</option><option>To be confirmed</option></select></label>
-        <label class="field full"><span>Problem or opportunity</span><textarea id="initiative-problem" rows="3" required></textarea></label>
-        <label class="field full"><span>Expected enterprise outcome</span><textarea id="initiative-outcome" rows="3" required></textarea></label>
-        <label class="field full"><span>Next action or milestone</span><textarea id="initiative-next-action" rows="2"></textarea></label>
+          <div class="form-grid">
+            <label id="initiative-owner-field" class="field full hidden">
+              <span>Record owner / submit on behalf of</span>
+              <select id="initiative-created-by"></select>
+            </label>
 
-        <div class="modal-actions full">
+            <label class="field full">
+              <span>Initiative name *</span>
+              <input id="initiative-name" maxlength="150" required>
+            </label>
+
+            <label class="field">
+              <span>Lead department *</span>
+              <input id="initiative-department" required>
+            </label>
+
+            <label class="field">
+              <span>Priority</span>
+              <select id="initiative-priority">
+                <option>Strategic</option>
+                <option selected>High</option>
+                <option>Medium</option>
+                <option>Operational</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Executive sponsor *</span>
+              <input id="initiative-executive-sponsor" required>
+              <small>Senior leader who champions the initiative and removes enterprise barriers.</small>
+            </label>
+
+            <label class="field">
+              <span>Accountable owner *</span>
+              <input id="initiative-owner" required>
+              <small>Single person accountable for the outcome and management reporting.</small>
+            </label>
+
+            <label class="field">
+              <span>Delivery lead *</span>
+              <input id="initiative-delivery-lead" required>
+              <small>Person responsible for day-to-day coordination and milestone delivery.</small>
+            </label>
+
+            <label class="field">
+              <span>Strategic pillar *</span>
+              <select id="initiative-pillar" required></select>
+            </label>
+
+            <label class="field">
+              <span>Start date</span>
+              <input id="initiative-start-date" type="date">
+            </label>
+
+            <label class="field">
+              <span>Target completion date</span>
+              <input id="initiative-target-date" type="date">
+            </label>
+
+            <label class="field">
+              <span>Status</span>
+              <select id="initiative-status">
+                <option>Planning</option>
+                <option>In Progress</option>
+                <option>At Risk</option>
+                <option>On Hold</option>
+                <option>Completed</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Overall risk level</span>
+              <select id="initiative-risk">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Extreme</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="initiative-form-step" data-step-panel="2">
+          <div class="form-section-heading">
+            <span class="section-label">Step 2</span>
+            <h3>Business Need, Value Measure & Delivery</h3>
+            <p>Define why the initiative matters and how management will measure value.</p>
+          </div>
+
+          <div class="form-grid">
+            <label class="field full">
+              <span>Problem or opportunity statement *</span>
+              <textarea id="initiative-problem" rows="4" required></textarea>
+            </label>
+
+            <label class="field full">
+              <span>Expected enterprise outcome *</span>
+              <textarea id="initiative-outcome" rows="4" required></textarea>
+            </label>
+
+            <label class="field full">
+              <span>Value measure *</span>
+              <input id="initiative-value-measure" required placeholder="Example: Approval turnaround time, customer satisfaction, cost saving">
+              <small>State the principal indicator that demonstrates whether the initiative creates value.</small>
+            </label>
+
+            <label class="field">
+              <span>Baseline value</span>
+              <input id="initiative-value-baseline" placeholder="Example: 14 working days">
+            </label>
+
+            <label class="field">
+              <span>Target value *</span>
+              <input id="initiative-value-target" required placeholder="Example: ≤ 5 working days by Dec 2027">
+            </label>
+
+            <label class="field">
+              <span>Measurement frequency</span>
+              <select id="initiative-value-frequency">
+                <option>Monthly</option>
+                <option selected>Quarterly</option>
+                <option>Half-yearly</option>
+                <option>Annually</option>
+                <option>At milestone</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Value measure owner</span>
+              <input id="initiative-value-owner">
+            </label>
+
+            <label class="field">
+              <span>Progress (%)</span>
+              <input id="initiative-progress" type="number" min="0" max="100" value="0">
+            </label>
+
+            <label class="field">
+              <span>Readiness (%)</span>
+              <input id="initiative-readiness" type="number" min="0" max="100" value="50">
+            </label>
+
+            <label class="field full">
+              <span>Next action or milestone</span>
+              <textarea id="initiative-next-action" rows="3"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="initiative-form-step" data-step-panel="3">
+          <div class="form-section-heading">
+            <span class="section-label">Step 3</span>
+            <h3>Detailed HR, Workforce & Change Impact</h3>
+            <p>Assess the people implications early instead of treating HR as a final-stage endorsement.</p>
+          </div>
+
+          <div class="form-grid">
+            <label class="field">
+              <span>HR collaboration requirement *</span>
+              <select id="initiative-hr" required>
+                <option>Not required</option>
+                <option>Required</option>
+                <option>To be confirmed</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>People impact level</span>
+              <select id="initiative-people-impact">
+                <option>None</option>
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Enterprise-wide</option>
+              </select>
+            </label>
+
+            <label class="field full">
+              <span>Affected workforce groups / departments</span>
+              <textarea id="initiative-affected-groups" rows="3" placeholder="Identify teams, job families, locations or employee groups affected."></textarea>
+            </label>
+
+            <label class="field">
+              <span>Estimated roles affected</span>
+              <input id="initiative-roles-affected" type="number" min="0" value="0">
+            </label>
+
+            <label class="field">
+              <span>HR owner / focal person</span>
+              <input id="initiative-hr-owner">
+            </label>
+
+            <label class="field checkbox-field">
+              <input id="initiative-new-roles-required" type="checkbox">
+              <span>New roles or positions are required</span>
+            </label>
+
+            <label class="field checkbox-field">
+              <input id="initiative-redeployment-required" type="checkbox">
+              <span>Workforce redeployment is required</span>
+            </label>
+
+            <label class="field full">
+              <span>Organisation design impact</span>
+              <textarea id="initiative-org-design-impact" rows="3" placeholder="Describe reporting-line, structure, span-of-control or job-design implications."></textarea>
+            </label>
+
+            <label class="field full">
+              <span>Capability or competency gaps</span>
+              <textarea id="initiative-capability-gap" rows="3" placeholder="Describe new knowledge, digital, technical, leadership or behavioural capabilities required."></textarea>
+            </label>
+
+            <label class="field">
+              <span>Training required</span>
+              <select id="initiative-training-required">
+                <option>No</option>
+                <option>Yes</option>
+                <option selected>To be assessed</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Training plan status</span>
+              <select id="initiative-training-plan-status">
+                <option>Not required</option>
+                <option selected>Not started</option>
+                <option>In development</option>
+                <option>Approved</option>
+                <option>In implementation</option>
+                <option>Completed</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Change management required</span>
+              <select id="initiative-change-required">
+                <option>No</option>
+                <option selected>Yes</option>
+                <option>To be assessed</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Change plan status</span>
+              <select id="initiative-change-plan-status">
+                <option selected>Not started</option>
+                <option>In development</option>
+                <option>Approved</option>
+                <option>In implementation</option>
+                <option>Completed</option>
+                <option>Not required</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Communication plan status</span>
+              <select id="initiative-communication-plan-status">
+                <option selected>Not started</option>
+                <option>In development</option>
+                <option>Approved</option>
+                <option>In implementation</option>
+                <option>Completed</option>
+                <option>Not required</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>HR review status</span>
+              <select id="initiative-hr-review-status">
+                <option selected>Not submitted</option>
+                <option>Pending HR review</option>
+                <option>Clarification required</option>
+                <option>Conditionally supported</option>
+                <option>Supported</option>
+                <option>Not supported</option>
+                <option>Not required</option>
+              </select>
+            </label>
+
+            <label class="field full">
+              <span>HR comments, conditions or required actions</span>
+              <textarea id="initiative-hr-comments" rows="3"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="initiative-form-step" data-step-panel="4">
+          <div class="form-section-heading">
+            <span class="section-label">Step 4</span>
+            <h3>Supporting Evidence Check</h3>
+            <p>Record the maturity of evidence supporting the proposal. “Available” means it can be produced for review.</p>
+          </div>
+
+          <div class="evidence-summary">
+            <div>
+              <span>Evidence completeness</span>
+              <strong id="initiative-evidence-score">0%</strong>
+            </div>
+            <div class="progress-track"><span id="initiative-evidence-bar" style="width:0%"></span></div>
+          </div>
+
+          <div class="evidence-grid">
+            <label class="evidence-item">
+              <span>Problem / demand evidence *</span>
+              <select id="evidence-problem" class="evidence-status" required>
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+              <small>Operational data, customer feedback, audit finding, policy need or benchmark.</small>
+            </label>
+
+            <label class="evidence-item">
+              <span>Baseline validated *</span>
+              <select id="evidence-baseline" class="evidence-status" required>
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+              <small>Reliable starting value for the selected value measure.</small>
+            </label>
+
+            <label class="evidence-item">
+              <span>Business case / concept paper</span>
+              <select id="evidence-business-case" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+
+            <label class="evidence-item">
+              <span>Financial assessment</span>
+              <select id="evidence-financial" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+
+            <label class="evidence-item">
+              <span>Risk assessment</span>
+              <select id="evidence-risk" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+
+            <label class="evidence-item">
+              <span>Implementation / milestone plan</span>
+              <select id="evidence-implementation" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+
+            <label class="evidence-item">
+              <span>HR / workforce impact assessment</span>
+              <select id="evidence-hr" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+
+            <label class="evidence-item">
+              <span>Stakeholder endorsement / consultation</span>
+              <select id="evidence-stakeholder" class="evidence-status">
+                <option value="Not available">Not available</option>
+                <option value="In progress">In progress</option>
+                <option value="Available">Available</option>
+                <option value="Not applicable">Not applicable</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-grid evidence-notes">
+            <label class="field full">
+              <span>Evidence reference, repository link or document location</span>
+              <textarea id="initiative-evidence-reference" rows="3" placeholder="List file names, URLs, SharePoint locations, paper references or document IDs."></textarea>
+            </label>
+
+            <label class="field full">
+              <span>Evidence gaps and planned closure actions</span>
+              <textarea id="initiative-evidence-notes" rows="3"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="initiative-form-step" data-step-panel="5">
+          <div class="form-section-heading">
+            <span class="section-label">Step 5</span>
+            <h3>Management Review Summary</h3>
+            <p>Review the critical submission elements before saving the initiative.</p>
+          </div>
+
+          <div id="initiative-review-summary" class="review-summary"></div>
+
+          <label class="declaration">
+            <input id="initiative-declaration" type="checkbox" required>
+            <span>I confirm that the ownership, value target, HR impact and evidence status recorded here are accurate to the best of my knowledge.</span>
+          </label>
+        </section>
+
+        <div class="modal-actions form-navigation">
+          <button id="initiative-previous-step" class="button light hidden" type="button">Previous</button>
+          <div class="navigation-spacer"></div>
           <button id="cancel-initiative-modal" class="button light" type="button">Cancel</button>
-          <button id="save-initiative-button" class="button gold" type="submit">Save Initiative</button>
+          <button id="initiative-next-step" class="button secondary" type="button">Next</button>
+          <button id="save-initiative-button" class="button gold hidden" type="submit">Save Initiative</button>
         </div>
       </form>
     </div>

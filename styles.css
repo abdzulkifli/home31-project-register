@@ -77,3 +77,77 @@ button{cursor:pointer}
 @media(max-width:1150px){.app-shell{grid-template-columns:230px minmax(0,1fr)}.kpi-grid.six{grid-template-columns:repeat(3,1fr)}.filter-bar.admin-filter{grid-template-columns:1fr 1fr}}
 @media(max-width:850px){.auth-screen{grid-template-columns:1fr}.auth-brand{padding:40px 24px}.auth-features{grid-template-columns:1fr}.app-shell{display:block}.sidebar{position:fixed;left:-290px;z-index:80;width:280px;transition:.2s}.sidebar.open{left:0}.dashboard-grid,.account-grid,.admin-user-layout,.exception-lanes,.settings-grid{grid-template-columns:1fr}.kpi-grid,.kpi-grid.six{grid-template-columns:repeat(2,1fr)}.filter-bar,.filter-bar.admin-filter{grid-template-columns:1fr}.content{padding:16px 12px 50px}.topbar{padding:12px 14px}.hero{display:block}.hero .button{margin-top:15px}.form-grid{grid-template-columns:1fr}.field.full,.modal-actions.full{grid-column:auto}}
 @media(max-width:480px){.kpi-grid,.kpi-grid.six{grid-template-columns:1fr}.topbar h1{font-size:17px}.topbar-actions .icon-button{display:none}.button-row,.modal-actions{display:grid}.button-row .button,.modal-actions .button{width:100%}}
+
+
+/* V7.1 comprehensive multi-step initiative form */
+.comprehensive-modal{width:min(1040px,100%);padding:22px 24px}
+.initiative-stepper{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;
+  margin:18px 0 12px;padding:8px;border:1px solid var(--line);
+  border-radius:17px;background:#faf7f6;
+}
+.initiative-step{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  min-height:42px;border:1px solid transparent;border-radius:12px;
+  background:transparent;color:var(--muted);font-size:10px;font-weight:900;
+}
+.initiative-step span{
+  width:23px;height:23px;border-radius:50%;display:grid;place-items:center;
+  background:#eee4e3;color:#674e51;font-size:9px;
+}
+.initiative-step.active{background:#fff;color:var(--brand);border-color:#e5c8ca;box-shadow:0 6px 15px rgba(85,25,29,.06)}
+.initiative-step.active span,.initiative-step.completed span{background:var(--brand);color:#fff}
+.initiative-step.completed{color:var(--green)}
+.form-completion,.evidence-summary{
+  display:grid;grid-template-columns:170px 1fr;align-items:center;gap:14px;
+  margin-bottom:16px;padding:11px 13px;border-radius:14px;background:var(--blue-soft);
+}
+.form-completion span,.evidence-summary span{display:block;color:var(--muted);font-size:9.5px}
+.form-completion strong,.evidence-summary strong{font-size:15px}
+.initiative-comprehensive-form{display:block}
+.initiative-form-step{display:none;min-height:470px}
+.initiative-form-step.active{display:block}
+.form-section-heading{padding:4px 0 14px;border-bottom:1px solid var(--line);margin-bottom:15px}
+.form-section-heading h3{margin:4px 0 5px;font-size:18px}
+.form-section-heading p{margin:0;color:var(--muted);font-size:10.5px;line-height:1.5}
+.checkbox-field{
+  flex-direction:row;align-items:center;padding:12px;border:1px solid var(--line);
+  border-radius:13px;background:#fffaf8;font-weight:800;
+}
+.checkbox-field input{width:18px;height:18px;flex:0 0 auto}
+.evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.evidence-item{
+  display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:9px;
+  padding:13px;border:1px solid var(--line);border-radius:14px;background:#fff;
+}
+.evidence-item>span{font-size:11px;font-weight:900}
+.evidence-item select{padding:9px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.evidence-item small{grid-column:1/-1;color:var(--muted);font-size:9.3px;line-height:1.4}
+.evidence-item.available{border-color:#9fd0bd;background:var(--green-soft)}
+.evidence-item.in-progress{border-color:#edd091;background:var(--gold-soft)}
+.evidence-item.not-available{border-color:#e6b0b4;background:var(--brand-soft)}
+.evidence-notes{margin-top:12px}
+.review-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.review-card{padding:15px;border:1px solid var(--line);border-radius:15px;background:#fff}
+.review-card.full{grid-column:1/-1}
+.review-card span{display:block;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:900}
+.review-card strong{display:block;margin-top:5px;font-size:12px;line-height:1.45}
+.review-card ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:10px;line-height:1.55}
+.declaration{
+  display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:14px;
+  border:1px solid #dec68f;border-radius:14px;background:var(--gold-soft);
+  font-size:10.5px;line-height:1.5;font-weight:800;
+}
+.declaration input{width:18px;height:18px;flex:0 0 auto}
+.form-navigation{position:sticky;bottom:-22px;margin:18px -24px -22px;padding:14px 24px;background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.navigation-spacer{flex:1}
+@media(max-width:780px){
+  .initiative-stepper{display:flex;overflow-x:auto}
+  .initiative-step{flex:0 0 125px}
+  .form-completion,.evidence-summary{grid-template-columns:1fr}
+  .evidence-grid,.review-summary{grid-template-columns:1fr}
+  .evidence-item{grid-template-columns:1fr}
+  .evidence-item small{grid-column:auto}
+  .review-card.full{grid-column:auto}
+  .initiative-form-step{min-height:unset}
+}
